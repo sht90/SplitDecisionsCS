@@ -38,7 +38,6 @@
                     words.Add(new Word(line.ToLower(), usability));
                 }
             }
-            Console.WriteLine("words list initial length = " + words.Count.ToString());
             // Sort the words list
             words.Sort();
             // if the usable dictionary and reference dictionary are the same, you're good to go!
@@ -67,7 +66,6 @@
                 usableWord.Usability = 1;
                 words.Insert(~index, usableWord);
             }
-            Console.WriteLine("words list final length = " + words.Count.ToString());
             // Return a list of words, sorted by length then alphabetical order, with usability metadata
             return words;
         }

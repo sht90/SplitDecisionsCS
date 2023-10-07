@@ -1,5 +1,4 @@
-﻿using System;
-namespace SplitDecisions
+﻿/*namespace SplitDecisions
 {
     internal class BoardFinder
     {
@@ -147,4 +146,4 @@ namespace SplitDecisions
         }
     }
 }
-
+*/

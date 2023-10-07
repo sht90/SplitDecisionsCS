@@ -1,7 +1,17 @@
-﻿using System;
-namespace SplitDecisions
+﻿namespace SplitDecisions
 {
-	public class BoardSettings
+	/// <summary>
+	/// The settings that define a board are:
+	/// * board dimensions
+	///   * board width
+	///   * board height
+	/// * geometric restrictions on words
+	///   * min word length
+	///   * max word length
+	/// * how many words per WordPair use the reference dictionary
+	///   * minUsability
+	/// </summary>
+    public class BoardSettings
 	{
 		public int MinUsability;
 		public int BoardWidth;
