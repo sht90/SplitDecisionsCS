@@ -13,9 +13,9 @@ int MINIMUM_WORD_LENGTH = 3;
 int MAXIMUM_WORD_LENGTH = 10;
 BoardSettings settings = new(MINIMUM_USABILITY, BOARD_WIDTH, BOARD_LENGTH, MINIMUM_WORD_LENGTH, MAXIMUM_WORD_LENGTH);
 // dictionaries (in the literal sense, not like the Dictionary<A,B> sense)
-string USABLE_DICTIONARY_PATH = "/Users/samtaylor/Documents/GitHub/split-decisions/SplitDecPuzzleCs/TextFiles/UsableDictionary.txt";
-string REFERENCE_DICTIONARY_PATH = "/Users/samtaylor/Documents/GitHub/split-decisions/SplitDecPuzzleCs/TextFiles/ReferenceDictionary.txt";
-string CONSTRAINED_WORDPAIRS_LOG = "/Users/samtaylor/Documents/GitHub/split-decisions/SplitDecPuzzleCs/TextFiles/WordPairs.txt";
+string USABLE_DICTIONARY_PATH = "/Users/samtaylor/Documents/SplitDecTextFiles/UsableDictionary.txt";
+string REFERENCE_DICTIONARY_PATH = "/Users/samtaylor/Documents/SplitDecTextFiles/ReferenceDictionary.txt";
+string CONSTRAINED_WORDPAIRS_LOG = "/Users/samtaylor/Documents/SplitDecTextFiles/WordPairs.txt";
 
 // Find all possible word pairs from the starting dictionaries
 WordPairsFinder wordPairsFinder = new(settings);
