@@ -1,4 +1,4 @@
-﻿namespace SplitDecisions
+﻿/*namespace SplitDecisions
 {
     internal class BoardFinder
     {
@@ -146,4 +146,4 @@
         }
     }
 }
-
+*/
