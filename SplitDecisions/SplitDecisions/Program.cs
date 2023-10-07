@@ -31,7 +31,8 @@ ConstraintsFinder constraintsFinder = new(settings);
 List<WordPair> boardWordPairs = constraintsFinder.FindConstraints(wordPairs);
 watch.Stop();
 Console.WriteLine("Found constraints in " + watch.ElapsedMilliseconds.ToString() + " milliseconds.");
-// Write results to corresponding files
+
+// Write results to file
 watch.Start();
 string constrainedWordPairsLog = "";
 foreach (WordPair wordPair in boardWordPairs) { constrainedWordPairsLog += wordPair.ToString() + "  " + wordPair.ShowMistakeables() + "  " + wordPair.ShowAnchors() + "\n"; }
