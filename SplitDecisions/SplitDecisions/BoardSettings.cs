@@ -1,7 +1,6 @@
-﻿using System;
-namespace SplitDecisions
+﻿namespace SplitDecisions
 {
-	public class BoardSettings
+    public class BoardSettings
 	{
 		public int MinUsability;
 		public int BoardWidth;

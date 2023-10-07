@@ -1,7 +1,6 @@
-﻿using System;
-namespace SplitDecisions
+﻿namespace SplitDecisions
 {
-	public enum Usability
+    public enum Usability
 	{
 		ZERO_WORDS,
 		ONE_WORD,
