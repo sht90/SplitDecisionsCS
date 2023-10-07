@@ -28,3 +28,11 @@ C:/Users/STaylor/source/repos/SplitDecisions/SplitDecisions/obj/Debug/net6.0/ref
 /Users/samtaylor/Documents/GitHub/split-decisions/SplitDecPuzzleCs/SplitDecisions/SplitDecisions/obj/Debug/net6.0/SplitDecisions.pdb
 /Users/samtaylor/Documents/GitHub/split-decisions/SplitDecPuzzleCs/SplitDecisions/SplitDecisions/obj/Debug/net6.0/SplitDecisions.genruntimeconfig.cache
 /Users/samtaylor/Documents/GitHub/split-decisions/SplitDecPuzzleCs/SplitDecisions/SplitDecisions/obj/Debug/net6.0/ref/SplitDecisions.dll
+/Users/samtaylor/Documents/GitHub/SplitDecisionsCS/SplitDecisions/SplitDecisions/obj/Debug/net6.0/SplitDecisions.csproj.AssemblyReference.cache
+/Users/samtaylor/Documents/GitHub/SplitDecisionsCS/SplitDecisions/SplitDecisions/obj/Debug/net6.0/SplitDecisions.GeneratedMSBuildEditorConfig.editorconfig
+/Users/samtaylor/Documents/GitHub/SplitDecisionsCS/SplitDecisions/SplitDecisions/obj/Debug/net6.0/SplitDecisions.AssemblyInfoInputs.cache
+/Users/samtaylor/Documents/GitHub/SplitDecisionsCS/SplitDecisions/SplitDecisions/obj/Debug/net6.0/SplitDecisions.AssemblyInfo.cs
+/Users/samtaylor/Documents/GitHub/SplitDecisionsCS/SplitDecisions/SplitDecisions/obj/Debug/net6.0/SplitDecisions.csproj.CoreCompileInputs.cache
+/Users/samtaylor/Documents/GitHub/SplitDecisionsCS/SplitDecisions/SplitDecisions/obj/Debug/net6.0/SplitDecisions.dll
+/Users/samtaylor/Documents/GitHub/SplitDecisionsCS/SplitDecisions/SplitDecisions/obj/Debug/net6.0/refint/SplitDecisions.dll
+/Users/samtaylor/Documents/GitHub/SplitDecisionsCS/SplitDecisions/SplitDecisions/obj/Debug/net6.0/SplitDecisions.pdb
