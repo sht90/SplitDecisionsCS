@@ -23,8 +23,6 @@
         enum Entropy
         {
             Resolved,  // a cell that's placed on the board. Besides backtracking, don't mess with resolved cells.
-            Hook,  // this indicates a cell next to a string of consecutive tiles that don't create a wordPair.
-            HalfHook,  // hooks appear in pairs, usually, one on either side of two consecutive letter pairs. Only one half hook needs to be resolved though, necessarily.
             Anchor,  // this cell must be resolved to constrain a wordPair
             HalfAnchor, // anchors appear in pairs beside a cell that needs to be intersected to constrain a given wordPair. But only one of them needs to be resolved, necessarily.
             Floater,  // this cell is next to a wordPair with multiple different anchoring conditions. Resolving this cell narrows down which floaters become anchors, and which floaters go back to default entropy (which... going back up in entropy isn't really how entropy works... maybe I've strayed far enough away from the original intention that I should consider a new name).
@@ -47,8 +45,6 @@
             UsedWords = new() { };
             CellsQueue = new ()
             {
-                { Entropy.Hook, new List<List<int>>() },
-                { Entropy.HalfHook, new List<List<int>>() },
                 { Entropy.Anchor, new List<List<int>>() },
                 { Entropy.HalfAnchor, new List<List<int>>() },
                 { Entropy.Floater, new List<List<int>>() }
@@ -208,8 +204,10 @@
                     // Intersecting with a grid cell that's not resolved yet.
                     if (BoardEntropy[checkRow][checkCol] != Entropy.Resolved)
                     {
-                        // If you were just putting down a single tile, you'd be good to place it here
-                        if (!(tile == wordPair.Shape.Index || tile == wordPair.Shape.Index + 1)) continue;
+                        // You can't place the word down next to another parallel wordPair
+                        // (well, technically you could if you were able to also resolve the overlaps into their own wordPairs in the future.)
+                        // TODO: accmmodate 'hooking' another wordPair
+
                         // look at neighboring cells...
                         int checkRowUL = checkRow;
                         int checkColUL = checkCol;
@@ -227,7 +225,7 @@
                         }
                         if (checkRowUL >= 0 && checkRowUL < Height && checkColUL >= 0 && checkColUL < Width)
                         {
-                            // if you'd be placing down a double tile directly next to tile from a parallel wordPair, that's bad. 
+                            // this wordPair would run parallel to another wordPair that's immediately adjacent. Not allowed!
                             if (Board[checkRowUL][checkColUL].Length > 0 && Board[checkRowUL][checkColUL][0] != '0')
                             {
                                 broken = true;
@@ -236,7 +234,7 @@
                         }
                         if (checkRowDR >= 0 && checkRowDR < Height && checkColDR >= 0 && checkColDR < Width)
                         {
-                            // if you'd be placing down a double tile directly next to tile from a parallel wordPair, that's bad. 
+                            // this wordPair would run parallel to another wordPair that's immediately adjacent. Not allowed!
                             if (Board[checkRowDR][checkColDR].Length > 0 && Board[checkRowDR][checkColDR][0] != '0')
                             {
                                 broken = true;
