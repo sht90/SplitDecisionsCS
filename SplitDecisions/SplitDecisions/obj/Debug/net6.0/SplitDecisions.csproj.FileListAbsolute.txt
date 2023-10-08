@@ -36,3 +36,10 @@ C:/Users/STaylor/source/repos/SplitDecisions/SplitDecisions/obj/Debug/net6.0/ref
 /Users/samtaylor/Documents/GitHub/SplitDecisionsCS/SplitDecisions/SplitDecisions/obj/Debug/net6.0/SplitDecisions.dll
 /Users/samtaylor/Documents/GitHub/SplitDecisionsCS/SplitDecisions/SplitDecisions/obj/Debug/net6.0/refint/SplitDecisions.dll
 /Users/samtaylor/Documents/GitHub/SplitDecisionsCS/SplitDecisions/SplitDecisions/obj/Debug/net6.0/SplitDecisions.pdb
+/Users/samtaylor/Documents/GitHub/SplitDecisionsCS/SplitDecisions/SplitDecisions/bin/Debug/net6.0/SplitDecisions
+/Users/samtaylor/Documents/GitHub/SplitDecisionsCS/SplitDecisions/SplitDecisions/bin/Debug/net6.0/SplitDecisions.deps.json
+/Users/samtaylor/Documents/GitHub/SplitDecisionsCS/SplitDecisions/SplitDecisions/bin/Debug/net6.0/SplitDecisions.runtimeconfig.json
+/Users/samtaylor/Documents/GitHub/SplitDecisionsCS/SplitDecisions/SplitDecisions/bin/Debug/net6.0/SplitDecisions.dll
+/Users/samtaylor/Documents/GitHub/SplitDecisionsCS/SplitDecisions/SplitDecisions/bin/Debug/net6.0/SplitDecisions.pdb
+/Users/samtaylor/Documents/GitHub/SplitDecisionsCS/SplitDecisions/SplitDecisions/obj/Debug/net6.0/SplitDecisions.genruntimeconfig.cache
+/Users/samtaylor/Documents/GitHub/SplitDecisionsCS/SplitDecisions/SplitDecisions/obj/Debug/net6.0/ref/SplitDecisions.dll
