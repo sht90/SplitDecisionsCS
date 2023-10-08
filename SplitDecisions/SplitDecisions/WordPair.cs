@@ -28,6 +28,19 @@
             this.Usability = usability;
         }
 
+        public string this[int key]
+        {
+            get => GetValue(key);
+        }
+
+        public string GetValue(int key)
+        {
+            if (key < this.Shape.Index) return this.Letters[key].ToString();
+            if (key == Shape.Index) return Splits[0];
+            if (key == Shape.Index + 1) return Splits[1];
+            return this.Letters[key - 2].ToString();
+        }
+
         public override string ToString()
         {
             return String.Format("{0}({1}/{2}){3}", Before, Splits[0], Splits[1], After);
