@@ -17,7 +17,7 @@
         string[][] Board;
         Entropy[][] BoardEntropy;
         // list of strings to indicate board cells
-        Dictionary<WordPair, List<int>> BoardWords;
+        Dictionary<WordPair, List<List<int>>> WordPairCellsLUT;
         // LUT for wordpairs that are actually on the board, and their cells
 
         enum Entropy
@@ -50,23 +50,187 @@
                 { Entropy.Floater, new List<List<int>>() }
                 // This is just the queue. A resolved cell is effectively off the queue, and a default cell effectively hasn't been put on the queue yet.
             };
-            BoardWords = new() { };
+            WordPairCellsLUT = new() { };
         }
 
         /// <summary>
         /// Adds a new word pair to the board and manages all relevant metadata:
         /// * Adds a new cell to the board for each tile in the word pair
         /// * Puts empty cells around the new word pair where necessary
-        /// * Adds wordPair and indexes of new cell to BoardWords LUT
+        /// * Adds wordPair and indexes of new cell to WordPairCellsLUT
         /// * Adds new cells to CellsQueue
         /// * Updates entropy of each cell in queue and on board
         /// </summary>
         /// <param name="wordPair">
         /// Word pair to be added to the board
         /// </param>
-        public void Add(WordPair wordPair)
+        public void Add(WordPair wordPair, Placement placement)
         {
+            // We'll put this cells list in an LUT soon
+            List<List<int>> cells = new();
+            // prepare to traverse new wordPair
+            int row = placement.Row;
+            int col = placement.Col;
+            // in this traversal, we should also track where the intersections are
+            List<bool> currentIntersections = new();
+            for (int i = 0; i < wordPair.Shape.Length; i++)
+            {
+                // get indexes of cells
+                if (placement.Dir == Orientation.Horizontal) col = placement.Col + i;
+                else row = placement.Row + i;
+                // add cell index to cells list for LUT
+                cells.Add(new List<int>() { row, col });
+                // a cell is an intersection if it existed before adding this new cell
+                currentIntersections.Add(BoardEntropy[row][col] == Entropy.Resolved);
+                // add new tile to the board
+                Board[row][col] = wordPair[i];
+                // resolve cell's entropy
+                BoardEntropy[row][col] = Entropy.Resolved;
 
+                // Now that the cell itself is done, update the surrounding cells/entropy
+                // there must be an empty cell right before and right after the wordPair
+                if (i == 0)
+                {
+                    int tmpRow = row;
+                    int tmpCol = col;
+                    if (placement.Dir == Orientation.Horizontal) tmpCol = col - 1;
+                    else tmpRow = row - 1;
+                    Board[tmpRow][tmpCol] = "0";
+                    BoardEntropy[tmpRow][tmpCol] = Entropy.Resolved;
+
+                }
+                else if (i == wordPair.Shape.Length - 1)
+                {
+                    int tmpRow = row;
+                    int tmpCol = col;
+                    if (placement.Dir == Orientation.Horizontal) tmpCol = col + 1;
+                    else tmpRow = row + 1;
+                    Board[tmpRow][tmpCol] = "0";
+                    BoardEntropy[tmpRow][tmpCol] = Entropy.Resolved;
+                }
+            }
+            // add cells list to LUT
+            WordPairCellsLUT.Add(wordPair, cells);
+            // narrow down the anchor conditions based on the current intersections
+            SimplifyAnchors(wordPair, currentIntersections);
+            // now go back for another traversal, to establish entropy values of neighboring cells
+            int rowUL, colUL, rowDR, colDR, rowUL1, colUL1, rowDR1, colDR1;
+            row = placement.Row;
+            col = placement.Col;
+            for (int i = 0; i < wordPair.Shape.Length; i++)
+            {
+                // get indexes of cells
+                if (placement.Dir == Orientation.Horizontal)
+                {
+                    col = placement.Col + i;
+                    rowUL = row - 1;
+                    rowDR = row + 1;
+                    rowUL1 = row - 2;
+                    rowDR1 = row + 2;
+                    colUL = col;
+                    colDR = col;
+                    colUL1 = col;
+                    colDR1 = col;
+                }
+                else
+                {
+                    row = placement.Row + i;
+                    colUL = col - 1;
+                    colDR = col + 1;
+                    colUL1 = col - 2;
+                    colDR1 = col + 2;
+                    rowUL = row;
+                    rowDR = row;
+                    rowUL1 = row;
+                    rowDR1 = row;
+                }
+                // If this cell is an anchor in ANY of the possible anchors for this wordPair, it should have floaters on either side
+                // if this cell is an anchhor for ALL of the possible anchors for this wordPair, overwrite its status as a floater -- it should have halfanchors on either side
+                // if you can't put a halfanchor on one side (it's already resolved or it's too close to the edge of the board), then the other side is an anchor
+                // if you can't do that for either side, then you shouldn't be able to place this on the board at all... TODO: how do we prevent that from happening? The only situation I can think of is if a mandatory anchor point passes in between two cells that must be empty. Or if one cell must be empty and the other side is too close to the edge of the board. That check sounds feasible to do in ValidPlacement, okay... nice. Let's assume that check is already implemented in ValidPlacement, and we're not immediatley screwed for putting this word on the board.
+                int[] counts = Enumerable.Repeat(0, wordPair.Letters.Length).ToArray();
+                for (int j = 0; j < wordPair.Anchors.Count; j++)
+                {
+                    for (int k = 0; k < wordPair.Anchors[j].Count; k++)
+                    {
+                        if (wordPair.Anchors[j][k]) counts[k]++;
+                    }
+                }
+                for (int m = 0; m < counts.Length; m++)
+                {
+                    // cells that want to be HalfAnchors
+                    if (counts[m] == wordPair.Anchors.Count - 1)
+                    {
+                        if (colUL < 2 || rowUL < 2 || BoardEntropy[rowUL][colUL] == Entropy.Resolved || (BoardEntropy[rowUL1][colUL1] == Entropy.Resolved && Board[rowUL1][colUL1][0] == '0'))
+                        {
+                            // the up-or-left neighboring cell is off the board, too close to the edge of the board, already resolved, or too close to a resolved empty cell.
+                            BoardEntropy[rowDR][colDR] = Entropy.Anchor;
+                        }
+                        else if (colDR >= Height - 2 || rowDR >= Height - 2 || (BoardEntropy[rowDR][colDR] == Entropy.Resolved && Board[rowDR][colDR][0] == '0') || (BoardEntropy[rowDR1][colDR1] == Entropy.Resolved && Board[rowDR1][colDR1][0] == '0'))
+                        {
+                            // the down-or-right neighboring cell is off the board, too close to the edge of the board, already resolved, or too close to a resolved empty cell.
+                            BoardEntropy[rowUL][colUL] = Entropy.Anchor;
+                        }
+                        else
+                        {
+                            // both cells can be used as an anchor
+                            BoardEntropy[rowUL][colUL] = Entropy.HalfAnchor;
+                            BoardEntropy[rowDR][colDR] = Entropy.HalfAnchor;
+                        }
+                    }
+                    // cells that want to be Floaters.
+                    else if (counts[m] > 0)
+                    {
+                        if (!(colUL < 2 || rowUL < 2 || BoardEntropy[rowUL][colUL] == Entropy.Resolved || (BoardEntropy[rowUL1][colUL1] == Entropy.Resolved && Board[rowUL1][colUL1][0] == '0')))
+                        {
+                            BoardEntropy[rowUL][colUL] = Entropy.Floater;
+                        }
+                        if (!(colDR >= Height - 2 || rowDR >= Height - 2 || (BoardEntropy[rowDR][colDR] == Entropy.Resolved && Board[rowDR][colDR][0] == '0') || (BoardEntropy[rowDR1][colDR1] == Entropy.Resolved && Board[rowDR1][colDR1][0] == '0')))
+                        {
+                            BoardEntropy[rowDR][colDR] = Entropy.Anchor;
+                        }
+                        // if neither of these things can be a floater, then we need to update the anchors. But I think this goes back to the earlier issue about being able to verify whether the placement is valid based on anchor conditions and adjacent criteria. TODO.
+                    }
+                    // for every other cell, just leaves its neighbors as their existing entropy value.
+                }
+            }
+            // The Add method is "finished" here now, but I've set myself up for a hellish time when removing a wordPair, because I'd also need to undo all of its entropy changes (again, entropy reveals itself to be an inaccurate word choice here). I think a better implementation might be to have a stack of BoardEntropy instead of just a global array. I could also just pass it through the recursive functions instead of building my own "recursive stack." But also, I'm tired. TODO.
+        }
+
+        public void SimplifyAnchors(WordPair wordPair, List<bool> intersections)
+        {
+            List<int> scores = new();
+            int score;
+            foreach (List<bool> anchor in wordPair.Anchors)
+            {
+                score = 0;
+                for (int i = 0; i < anchor.Count; i++)
+                {
+                    if (anchor[i] && !intersections[i])
+                    {
+                        score += 1;
+                    }
+                    if (anchor[i] && intersections[i])
+                    {
+                        anchor[i] = false;
+                    }
+                }
+                scores.Add(score);
+            }
+            int minScore = scores[0];
+            foreach (int s in scores)
+            {
+                if (s < minScore) minScore = s;
+            }
+            List<List<bool>> simplifiedAnchors = new();
+            for (int i = 0; i < wordPair.Anchors.Count(); i++)
+            {
+                if (scores[i] == minScore)
+                {
+                    simplifiedAnchors.Add(wordPair.Anchors[i]);
+                }
+            }
+            wordPair.Anchors = simplifiedAnchors;
         }
 
         /// <summary>
