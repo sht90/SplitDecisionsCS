@@ -1,5 +1,27 @@
 ﻿namespace SplitDecisions
 {
+
+    public enum Entropy
+    {
+        Resolved,  // a cell that's placed on the board. Besides backtracking, don't mess with resolved cells.
+        Anchor,  // this cell must be resolved to constrain a wordPair
+        HalfAnchor, // anchors appear in pairs beside a cell that needs to be intersected to constrain a given wordPair. But only one of them needs to be resolved, necessarily.
+        Floater,  // this cell is next to a wordPair with multiple different anchoring conditions. Resolving this cell narrows down which floaters become anchors, and which floaters go back to default entropy (which... going back up in entropy isn't really how entropy works... maybe I've strayed far enough away from the original intention that I should consider a new name).
+        Default  // default entropic state
+    }
+
+    internal class Cell
+    {
+        public string Contents;
+        public Entropy Entropy;
+
+        public Cell(string contents = "", Entropy entropy = Entropy.Default)
+        {
+            Contents = contents;
+            Entropy = entropy;
+        }
+    }
+
     internal class BoardFinder
     {
         private int MinWordLength;
@@ -15,20 +37,10 @@
         //     list of ints: row, col
         Dictionary<Entropy, List<List<int>>> CellsQueue;
         // list of strings to indicate board cells
-        string[][] Board;
-        Entropy[][] BoardEntropy;
+        Cell[][] Board;
         // map between WordPairs and their respective cells
         Dictionary<WordPair, List<List<int>>> WordPairToCellsLUT;
         Dictionary<List<int>, List<WordPair>> CellsToWordPairsLUT;
-
-        public enum Entropy
-        {
-            Resolved,  // a cell that's placed on the board. Besides backtracking, don't mess with resolved cells.
-            Anchor,  // this cell must be resolved to constrain a wordPair
-            HalfAnchor, // anchors appear in pairs beside a cell that needs to be intersected to constrain a given wordPair. But only one of them needs to be resolved, necessarily.
-            Floater,  // this cell is next to a wordPair with multiple different anchoring conditions. Resolving this cell narrows down which floaters become anchors, and which floaters go back to default entropy (which... going back up in entropy isn't really how entropy works... maybe I've strayed far enough away from the original intention that I should consider a new name).
-            Default  // default entropic state
-        }
 
         public BoardFinder(BoardSettings settings)
         {
@@ -38,8 +50,7 @@
             Height = settings.BoardHeight;
             Width = settings.BoardWidth;
             // Make initial Board, including entropy
-            BoardEntropy = Enumerable.Repeat(Enumerable.Repeat(Entropy.Default, Width).ToArray(), Height).ToArray();
-            Board = Enumerable.Repeat(Enumerable.Repeat("", Width).ToArray(), Height).ToArray();
+            Board = Enumerable.Repeat(Enumerable.Repeat(new Cell(), Width).ToArray(), Height).ToArray();
             // Make the lists for keeping track of which wordPairs/words/prompts we've used so far. We don't want any repeats.
             // Normally you'd just remove these things from the list, but since the list of Wordpairs (10k-100k) is so huge compared to the list of used WordPairs on the board (10-100), it's probably computationally cheaper just to check whether a word has been used yet. I suppose I could test both approaches sooner or later.
             UsedWordPairs = new() { };
@@ -61,6 +72,26 @@
                     CellsToWordPairsLUT.Add(new List<int>() { i, j }, new List<WordPair>() { });
                 }
             }
+        }
+
+        public string[][] Solve()
+        {
+            // Add starting point
+
+            return BoardAsStringArray();
+        }
+
+        private string[][] BoardAsStringArray()
+        {
+            string[][] BoardStr = Enumerable.Repeat(Enumerable.Repeat("", Width).ToArray(), Height).ToArray();
+            for (int i = 0; i < Board.Length; i++)
+            {
+                for (int j = 0; j < Board[i].Length; j++)
+                {
+                    BoardStr[i][j] = Board[i][j].Contents;
+                }
+            }
+            return BoardStr;
         }
 
         /// <summary>
@@ -91,11 +122,11 @@
                 // add cell index to cells list for LUT
                 cells.Add(new List<int>() { row, col });
                 // a cell is an intersection if it existed before adding this new cell
-                currentIntersections.Add(BoardEntropy[row][col] == Entropy.Resolved);
+                currentIntersections.Add(Board[row][col].Entropy == Entropy.Resolved);
                 // add new tile to the board
-                Board[row][col] = wordPair[i];
+                Board[row][col].Contents = wordPair[i];
                 // resolve cell's entropy
-                BoardEntropy[row][col] = Entropy.Resolved;
+                Board[row][col].Entropy = Entropy.Resolved;
 
                 // Now that the cell itself is done, update the surrounding cells/entropy
                 // there must be an empty cell right before and right after the wordPair
@@ -105,8 +136,8 @@
                     int tmpCol = col;
                     if (placement.Dir == Orientation.Horizontal) tmpCol = col - 1;
                     else tmpRow = row - 1;
-                    Board[tmpRow][tmpCol] = "0";
-                    BoardEntropy[tmpRow][tmpCol] = Entropy.Resolved;
+                    Board[tmpRow][tmpCol].Contents = "0";
+                    Board[tmpRow][tmpCol].Entropy = Entropy.Resolved;
 
                 }
                 else if (i == wordPair.Shape.Length - 1)
@@ -115,8 +146,8 @@
                     int tmpCol = col;
                     if (placement.Dir == Orientation.Horizontal) tmpCol = col + 1;
                     else tmpRow = row + 1;
-                    Board[tmpRow][tmpCol] = "0";
-                    BoardEntropy[tmpRow][tmpCol] = Entropy.Resolved;
+                    Board[tmpRow][tmpCol].Contents = "0";
+                    Board[tmpRow][tmpCol].Entropy = Entropy.Resolved;
                 }
             }
             // add cells list to LUT
@@ -217,54 +248,54 @@
                             // cell furthest in the upper left direction needs to be on the board
                             !(srowULUL1 >= 0 && scolULUL2 >= 0)
                             // none of the split cells can be occupied, unless they're explicitly empty
-                            || (Board[srowULUL1][scolULUL1].Length > 0 && Board[srowULUL1][scolULUL1][0] != '0')
-                            || (Board[srowULUL2][scolULUL2].Length > 0 && Board[srowULUL2][scolULUL2][0] != '0')
-                            || (Board[srowULDR1][scolULDR1].Length > 0 && Board[srowULDR1][scolULDR1][0] != '0')
-                            || (Board[srowULDR2][scolULDR2].Length > 0 && Board[srowULDR2][scolULDR2][0] != '0')
+                            || (Board[srowULUL1][scolULUL1].Contents.Length > 0 && Board[srowULUL1][scolULUL1].Contents[0] != '0')
+                            || (Board[srowULUL2][scolULUL2].Contents.Length > 0 && Board[srowULUL2][scolULUL2].Contents[0] != '0')
+                            || (Board[srowULDR1][scolULDR1].Contents.Length > 0 && Board[srowULDR1][scolULDR1].Contents[0] != '0')
+                            || (Board[srowULDR2][scolULDR2].Contents.Length > 0 && Board[srowULDR2][scolULDR2].Contents[0] != '0')
                             // none of the check cells can be occupied at all
-                            || (Board[rowUL1][colUL1].Length > 0)
-                            || (Board[rowUL2][colUL2].Length > 0)
+                            || (Board[rowUL1][colUL1].Contents.Length > 0)
+                            || (Board[rowUL2][colUL2].Contents.Length > 0)
                         );
                         // do the same thing for down/right
                         bool drBad = (
                             // cell furthest in the down right direction needs to be on the board
                             !(srowDRDR2 < Height && scolDRDR2 < Width)
                             // none of the split cells can be occupied, unless they're explicitly empty
-                            || (Board[srowDRUL1][scolDRUL1].Length > 0 && Board[srowDRUL1][scolDRUL1][0] != '0')
-                            || (Board[srowDRUL2][scolDRUL2].Length > 0 && Board[srowDRUL2][scolDRUL2][0] != '0')
-                            || (Board[srowDRDR1][scolDRDR1].Length > 0 && Board[srowDRDR1][scolDRDR1][0] != '0')
-                            || (Board[srowDRDR2][scolDRDR2].Length > 0 && Board[srowDRDR2][scolDRDR2][0] != '0')
+                            || (Board[srowDRUL1][scolDRUL1].Contents.Length > 0 && Board[srowDRUL1][scolDRUL1].Contents[0] != '0')
+                            || (Board[srowDRUL2][scolDRUL2].Contents.Length > 0 && Board[srowDRUL2][scolDRUL2].Contents[0] != '0')
+                            || (Board[srowDRDR1][scolDRDR1].Contents.Length > 0 && Board[srowDRDR1][scolDRDR1].Contents[0] != '0')
+                            || (Board[srowDRDR2][scolDRDR2].Contents.Length > 0 && Board[srowDRDR2][scolDRDR2].Contents[0] != '0')
                             // none of the check cells can be occupied at all
-                            || (Board[rowDR1][colDR1].Length > 0)
-                            || (Board[rowDR2][colDR2].Length > 0)
+                            || (Board[rowDR1][colDR1].Contents.Length > 0)
+                            || (Board[rowDR2][colDR2].Contents.Length > 0)
                         );
                         // error check tho
                         //if (ulBad && drBad) Console.WriteLine("UH OH! ulBad && drBad in Add function!");
-                        if (ulBad) BoardEntropy[rowDR1][colDR1] = Entropy.Anchor;
-                        else if (drBad) BoardEntropy[rowUL1][colUL1] = Entropy.Anchor;
+                        if (ulBad) Board[rowDR1][colDR1].Entropy = Entropy.Anchor;
+                        else if (drBad) Board[rowUL1][colUL1].Entropy = Entropy.Anchor;
                         else
                         {
                             // both cells can be used as an anchor
-                            BoardEntropy[rowUL1][colUL1] = Entropy.HalfAnchor;
-                            BoardEntropy[rowDR1][colDR1] = Entropy.HalfAnchor;
+                            Board[rowUL1][colUL1].Entropy = Entropy.HalfAnchor;
+                            Board[rowDR1][colDR1].Entropy = Entropy.HalfAnchor;
                         }
                     }
                     // cells that want to be Floaters.
                     else if (counts[m] > 0)
                     {
-                        if (!(colUL1 < 2 || rowUL1 < 2 || BoardEntropy[rowUL1][colUL1] == Entropy.Resolved || (BoardEntropy[rowUL2][colUL2] == Entropy.Resolved && Board[rowUL2][colUL2][0] == '0')))
+                        if (!(colUL1 < 2 || rowUL1 < 2 || Board[rowUL1][colUL1].Entropy == Entropy.Resolved || (Board[rowUL2][colUL2].Entropy == Entropy.Resolved && Board[rowUL2][colUL2].Contents[0] == '0')))
                         {
-                            BoardEntropy[rowUL1][colUL1] = Entropy.Floater;
+                            Board[rowUL1][colUL1].Entropy = Entropy.Floater;
                         }
-                        if (!(colDR1 >= Height - 2 || rowDR1 >= Height - 2 || (BoardEntropy[rowDR1][colDR1] == Entropy.Resolved && Board[rowDR1][colDR1][0] == '0') || (BoardEntropy[rowDR2][colDR2] == Entropy.Resolved && Board[rowDR2][colDR2][0] == '0')))
+                        if (!(colDR1 >= Height - 2 || rowDR1 >= Height - 2 || (Board[rowDR1][colDR1].Entropy == Entropy.Resolved && Board[rowDR1][colDR1].Contents[0] == '0') || (Board[rowDR2][colDR2].Entropy == Entropy.Resolved && Board[rowDR2][colDR2].Contents[0] == '0')))
                         {
-                            BoardEntropy[rowDR1][colDR1] = Entropy.Floater;
+                            Board[rowDR1][colDR1].Entropy = Entropy.Floater;
                         }
                     }
                     // for every other cell, just leaves its neighbors as their existing entropy value.
                 }
             }
-            // The Add method is "finished" here now, but I've set myself up for a hellish time when removing a wordPair, because I'd also need to undo all of its entropy changes (again, entropy reveals itself to be an inaccurate word choice here). I think a better implementation might be to have a stack of BoardEntropy instead of just a global array. I could also just pass it through the recursive functions instead of building my own "recursive stack." But also, I'm tired. Wait a sec... isn't that just what happens when you pass the Board and BoardEntropy through to each function? TODO.
+            // The Add method is "finished" here now, but I've set myself up for a hellish time when removing a wordPair, because I'd also need to undo all of its entropy changes (again, entropy reveals itself to be an inaccurate word choice here). I think a better implementation might be to have a stack of Board instead of just a global array. I could also just pass it through the recursive functions instead of building my own "recursive stack." But also, I'm tired. Wait a sec... isn't that just what happens when you pass the Board and Board through to each function? TODO.
         }
 
         /// <summary>
@@ -332,7 +363,7 @@
                 // Set the existing tiles to blank, unless that'd overwrite a cell that existed before the word (like via an intersection)
                 if (CellsToWordPairsLUT[cell].Count == 1)
                 {
-                    Board[cell[0]][cell[1]] = "";
+                    Board[cell[0]][cell[1]].Contents = "";
                 }
                 // when you're done, remove the WordPair from the Cells-->WordPairs LUT
                 CellsToWordPairsLUT[cell].Remove(wordPair);
@@ -376,9 +407,9 @@
                         // unless the empty cell would be off the board, which is actually fine
                         continue;
                     }
-                    if (BoardEntropy[checkRow][checkCol] == Entropy.Resolved)
+                    if (Board[checkRow][checkCol].Entropy == Entropy.Resolved)
                     {
-                        if (Board[checkRow][checkCol][0] != '0')
+                        if (Board[checkRow][checkCol].Contents[0] != '0')
                         {
                             // Obvious bad case. The end of this wordPair would butt up against another wordPair.
                             return false;
@@ -386,7 +417,7 @@
                         // If you're here, then the cell that has to be empty already had to be empty for some other reason. Nice!
                         continue;
                     }
-                    if (BoardEntropy[checkRow][checkCol] == Entropy.Anchor)
+                    if (Board[checkRow][checkCol].Entropy == Entropy.Anchor)
                     {
                         // This cell is not populated yet, but NEEDS to be populated with a letter tile. That's a contradiction.
                         return false;
@@ -397,7 +428,7 @@
 
                 // If you've made it this far, you're looking at behavior inside the wordPair
                 // Start with intersections with a preexisting cell
-                if (BoardEntropy[checkRow][checkCol] == Entropy.Resolved)
+                if (Board[checkRow][checkCol].Entropy == Entropy.Resolved)
                 {
                     anchorCandidates.Add(true);
                     string compTile = wordPair[tile];
@@ -406,7 +437,7 @@
                         // you're trying to place a double letter tile over a tile that was already filled in. That's no good.
                         return false;
                     }
-                    if (compTile != Board[checkRow][checkCol])
+                    if (compTile != Board[checkRow][checkCol].Contents)
                     {
                         // you're trying to create an intersection between two letters that aren't the same. That won't work.
                         // This also applies exactly the same as if the cell is forced to be empty, ie its entropy is resolved and its value is '0'
@@ -510,7 +541,7 @@
                 if (checkRowUL1 >= 0 && checkColUL1 >= 0)
                 {
                     // this wordPair would run parallel to another wordPair that's immediately adjacent. Not allowed!
-                    if (Board[checkRowUL1][checkColUL1].Length > 0 && Board[checkRowUL1][checkColUL1][0] != '0')
+                    if (Board[checkRowUL1][checkColUL1].Contents.Length > 0 && Board[checkRowUL1][checkColUL1].Contents[0] != '0')
                     {
                         return false;
                     }
@@ -518,7 +549,7 @@
                 if (checkRowDR1 < Height && checkColDR1 < Width)
                 {
                     // this wordPair would run parallel to another wordPair that's immediately adjacent. Not allowed!
-                    if (Board[checkRowDR1][checkColDR1].Length > 0 && Board[checkRowDR1][checkColDR1][0] != '0')
+                    if (Board[checkRowDR1][checkColDR1].Contents.Length > 0 && Board[checkRowDR1][checkColDR1].Contents[0] != '0')
                     {
                         return false;
                     }
@@ -531,26 +562,26 @@
                     // cell furthest in the upper left direction needs to be on the board
                     !(splitRowULUL1 >= 0 && splitColULUL2 >= 0)
                     // none of the split cells can be occupied, unless they're explicitly empty
-                    || (Board[splitRowULUL1][splitColULUL1].Length > 0 && Board[splitRowULUL1][splitColULUL1][0] != '0')
-                    || (Board[splitRowULUL2][splitColULUL2].Length > 0 && Board[splitRowULUL2][splitColULUL2][0] != '0')
-                    || (Board[splitRowULDR1][splitColULDR1].Length > 0 && Board[splitRowULDR1][splitColULDR1][0] != '0')
-                    || (Board[splitRowULDR2][splitColULDR2].Length > 0 && Board[splitRowULDR2][splitColULDR2][0] != '0')
+                    || (Board[splitRowULUL1][splitColULUL1].Contents.Length > 0 && Board[splitRowULUL1][splitColULUL1].Contents[0] != '0')
+                    || (Board[splitRowULUL2][splitColULUL2].Contents.Length > 0 && Board[splitRowULUL2][splitColULUL2].Contents[0] != '0')
+                    || (Board[splitRowULDR1][splitColULDR1].Contents.Length > 0 && Board[splitRowULDR1][splitColULDR1].Contents[0] != '0')
+                    || (Board[splitRowULDR2][splitColULDR2].Contents.Length > 0 && Board[splitRowULDR2][splitColULDR2].Contents[0] != '0')
                     // none of the check cells can be occupied at all
-                    || (Board[checkRowUL1][checkColUL1].Length > 0)
-                    || (Board[checkRowUL2][checkColUL2].Length > 0)
+                    || (Board[checkRowUL1][checkColUL1].Contents.Length > 0)
+                    || (Board[checkRowUL2][checkColUL2].Contents.Length > 0)
                 );
                 // do the same thing for down/right
                 bool drBad = (
                     // cell furthest in the down right direction needs to be on the board
                     !(splitRowDRDR2 < Height && splitColDRDR2 < Width)
                     // none of the split cells can be occupied, unless they're explicitly empty
-                    || (Board[splitRowDRUL1][splitColDRUL1].Length > 0 && Board[splitRowDRUL1][splitColDRUL1][0] != '0')
-                    || (Board[splitRowDRUL2][splitColDRUL2].Length > 0 && Board[splitRowDRUL2][splitColDRUL2][0] != '0')
-                    || (Board[splitRowDRDR1][splitColDRDR1].Length > 0 && Board[splitRowDRDR1][splitColDRDR1][0] != '0')
-                    || (Board[splitRowDRDR2][splitColDRDR2].Length > 0 && Board[splitRowDRDR2][splitColDRDR2][0] != '0')
+                    || (Board[splitRowDRUL1][splitColDRUL1].Contents.Length > 0 && Board[splitRowDRUL1][splitColDRUL1].Contents[0] != '0')
+                    || (Board[splitRowDRUL2][splitColDRUL2].Contents.Length > 0 && Board[splitRowDRUL2][splitColDRUL2].Contents[0] != '0')
+                    || (Board[splitRowDRDR1][splitColDRDR1].Contents.Length > 0 && Board[splitRowDRDR1][splitColDRDR1].Contents[0] != '0')
+                    || (Board[splitRowDRDR2][splitColDRDR2].Contents.Length > 0 && Board[splitRowDRDR2][splitColDRDR2].Contents[0] != '0')
                     // none of the check cells can be occupied at all
-                    || (Board[checkRowDR1][checkColDR1].Length > 0)
-                    || (Board[checkRowDR2][checkColDR2].Length > 0)
+                    || (Board[checkRowDR1][checkColDR1].Contents.Length > 0)
+                    || (Board[checkRowDR2][checkColDR2].Contents.Length > 0)
                 );
                 // this could be an anchor candidate as long as both UL and DR aren't bad
                 anchorCandidates.Add(!(ulBad && drBad));
@@ -592,7 +623,7 @@
         {
             List<Placement> placements = new();  // to be returned at the end of the function
             // If starting from a null cell or unassigned cell
-            if (cellRow == -1 && cellCol == -1 || Board[cellRow][cellCol].Length < 1)
+            if (cellRow == -1 && cellCol == -1 || Board[cellRow][cellCol].Contents.Length < 1)
             {
                 // Any placement is valid as long as the word pair doesn't run off the board
                 // Traverse every cell
@@ -626,7 +657,7 @@
             }
             // If you've made it this far, you're starting from a not-null cell
             // Handle the remaining trivial case
-            if (Board[cellRow][cellCol].Length > 1 || Board[cellRow][cellCol] == "0")
+            if (Board[cellRow][cellCol].Contents.Length > 1 || Board[cellRow][cellCol].Contents == "0")
             {
                 // If the cell is already assigned to as being empty or a double-letter tile,
                 // then no, there is never a valid placement here.
@@ -634,7 +665,7 @@
             }
             
             // Start by finding any possible intersection points
-            char cell = Board[cellRow][cellCol][0];
+            char cell = Board[cellRow][cellCol].Contents[0];
             List<int> intersections = new() { };
             for (int i = 0; i < wordPair.Letters.Length; i++)
             {
@@ -706,7 +737,7 @@
         private int MaxWordLength;
         private int Height;
         private int Width;
-        Entropy[][] BoardEntropy;
+        Entropy[][] Board;
         string[][] Board;
         int[]? tb; // Every board position, to be stored as an array in a randomly shuffled order
         int[]? tw; // Every wordPair, to be stored as an array in a randomly shuffled order
@@ -722,7 +753,7 @@
             Height = settings.BoardHeight;
             Width = settings.BoardWidth;
             // Make initial Board, including entropy
-            BoardEntropy = Enumerable.Repeat(Enumerable.Repeat(Entropy.Default, Width).ToArray(), Height).ToArray();
+            Board = Enumerable.Repeat(Enumerable.Repeat(Entropy.Default, Width).ToArray(), Height).ToArray();
             Board = Enumerable.Repeat(Enumerable.Repeat("", Width).ToArray(), Height).ToArray();
             // Make the lists for keeping track of which wordPairs/words/prompts we've used so far. We don't want any repeats.
             // Normally you'd just remove these things from the list, but since the list of Wordpairs (10k-100k) is so huge compared to the list of used WordPairs on the board (10-100), it's probably computationally cheaper just to check whether a word has been used yet. I suppose I could test both approaches sooner or later.
@@ -734,7 +765,7 @@
         public void ResetBoard()
         {
             // reset Board for everything except which words/prompts/wordPairs have been used already.
-            BoardEntropy = Enumerable.Repeat(Enumerable.Repeat(Entropy.Default, Width).ToArray(), Height).ToArray();
+            Board = Enumerable.Repeat(Enumerable.Repeat(Entropy.Default, Width).ToArray(), Height).ToArray();
             Board = Enumerable.Repeat(Enumerable.Repeat("", Width).ToArray(), Height).ToArray();
             tb = null;
             tw = null;
