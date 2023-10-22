@@ -325,7 +325,20 @@
         /// </param>
         public void RemoveWordPair(WordPair wordPair)
         {
-
+            // TODO Entropy??
+            // Remove wordPair from LUTs
+            foreach (List<int> cell in WordPairToCellsLUT[wordPair])
+            {
+                // Set the existing tiles to blank, unless that'd overwrite a cell that existed before the word (like via an intersection)
+                if (CellsToWordPairsLUT[cell].Count == 1)
+                {
+                    Board[cell[0]][cell[1]] = "";
+                }
+                // when you're done, remove the WordPair from the Cells-->WordPairs LUT
+                CellsToWordPairsLUT[cell].Remove(wordPair);
+            }
+            // when you're done all the cells, remove the WordPair from the WordPair-->Cells LUT
+            WordPairToCellsLUT.Remove(wordPair);
         }
 
         /// <summary>
