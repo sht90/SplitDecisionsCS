@@ -20,7 +20,7 @@
         Dictionary<WordPair, List<List<int>>> WordPairCellsLUT;
         // LUT for wordpairs that are actually on the board, and their cells
 
-        enum Entropy
+        public enum Entropy
         {
             Resolved,  // a cell that's placed on the board. Besides backtracking, don't mess with resolved cells.
             Anchor,  // this cell must be resolved to constrain a wordPair
@@ -112,9 +112,11 @@
             // add cells list to LUT
             WordPairCellsLUT.Add(wordPair, cells);
             // narrow down the anchor conditions based on the current intersections
-            SimplifyAnchors(wordPair, currentIntersections);
+            List<List<bool>> simplifiedAnchors = GetSimplifiedAnchors(wordPair, currentIntersections);
             // now go back for another traversal, to establish entropy values of neighboring cells
-            int rowUL, colUL, rowDR, colDR, rowUL1, colUL1, rowDR1, colDR1;
+            int rowUL1, colUL1, rowDR1, colDR1, rowUL2, colUL2, rowDR2, colDR2;
+            int srowULUL1, scolULUL1, srowULDR1, scolULDR1, srowULUL2, scolULUL2, srowULDR2, scolULDR2;
+            int srowDRUL1, scolDRUL1, srowDRDR1, scolDRDR1, srowDRUL2, scolDRUL2, srowDRDR2, scolDRDR2;
             row = placement.Row;
             col = placement.Col;
             for (int i = 0; i < wordPair.Shape.Length; i++)
@@ -122,82 +124,137 @@
                 // get indexes of cells
                 if (placement.Dir == Orientation.Horizontal)
                 {
-                    col = placement.Col + i;
-                    rowUL = row - 1;
-                    rowDR = row + 1;
-                    rowUL1 = row - 2;
-                    rowDR1 = row + 2;
-                    colUL = col;
-                    colDR = col;
-                    colUL1 = col;
-                    colDR1 = col;
+                    row = placement.Row + i;
+                    colUL1 = col - 1;
+                    colDR1 = col + 1;
+                    colUL2 = col - 2;
+                    colDR2 = col + 2;
+                    rowUL1 = row;
+                    rowDR1 = row;
+                    rowUL2 = row;
+                    rowDR2 = row;
+
+                    scolULUL1 = col - 1;
+                    scolULUL2 = col - 2;
+                    scolULDR1 = col - 1;
+                    scolULDR2 = col - 2;
+                    scolDRUL1 = col + 1;
+                    scolDRUL2 = col + 2;
+                    scolDRDR1 = col + 1;
+                    scolDRDR2 = col + 2;
+
+                    srowULUL2 = row - 1;
+                    srowULUL1 = row - 1;
+                    srowULDR1 = row - 1;
+                    srowULDR2 = row - 1;
+                    srowDRUL1 = row + 1;
+                    srowDRUL2 = row + 1;
+                    srowDRDR1 = row + 1;
+                    srowDRDR2 = row + 1;
                 }
                 else
                 {
-                    row = placement.Row + i;
-                    colUL = col - 1;
-                    colDR = col + 1;
-                    colUL1 = col - 2;
-                    colDR1 = col + 2;
-                    rowUL = row;
-                    rowDR = row;
-                    rowUL1 = row;
-                    rowDR1 = row;
+                    col = placement.Col + i;
+                    rowUL1 = row - 1;
+                    rowDR1 = row + 1;
+                    rowUL2 = row - 2;
+                    rowDR2 = row + 2;
+                    colUL1 = col;
+                    colDR1 = col;
+                    colUL2 = col;
+                    colDR2 = col;
+
+                    srowULUL1 = row - 1;
+                    srowULUL2 = row - 2;
+                    srowULDR1 = row - 1;
+                    srowULDR2 = row - 2;
+                    srowDRUL1 = row + 1;
+                    srowDRUL2 = row + 2;
+                    srowDRDR1 = row + 1;
+                    srowDRDR2 = row + 2;
+
+                    scolULUL2 = col - 1;
+                    scolULUL1 = col - 1;
+                    scolULDR1 = col - 1;
+                    scolULDR2 = col - 1;
+                    scolDRUL1 = col + 1;
+                    scolDRUL2 = col + 1;
+                    scolDRDR1 = col + 1;
+                    scolDRDR2 = col + 1;
                 }
                 // If this cell is an anchor in ANY of the possible anchors for this wordPair, it should have floaters on either side
                 // if this cell is an anchhor for ALL of the possible anchors for this wordPair, overwrite its status as a floater -- it should have halfanchors on either side
                 // if you can't put a halfanchor on one side (it's already resolved or it's too close to the edge of the board), then the other side is an anchor
-                // if you can't do that for either side, then you shouldn't be able to place this on the board at all... TODO: how do we prevent that from happening? The only situation I can think of is if a mandatory anchor point passes in between two cells that must be empty. Or if one cell must be empty and the other side is too close to the edge of the board. That check sounds feasible to do in ValidPlacement, okay... nice. Let's assume that check is already implemented in ValidPlacement, and we're not immediatley screwed for putting this word on the board.
+                // IsValidPlacement makes sure that there's never a case where BOTH halfanchors are invalid.
                 int[] counts = Enumerable.Repeat(0, wordPair.Letters.Length).ToArray();
-                for (int j = 0; j < wordPair.Anchors.Count; j++)
+                for (int j = 0; j < simplifiedAnchors.Count; j++)
                 {
-                    for (int k = 0; k < wordPair.Anchors[j].Count; k++)
+                    for (int k = 0; k < simplifiedAnchors[j].Count; k++)
                     {
-                        if (wordPair.Anchors[j][k]) counts[k]++;
+                        if (simplifiedAnchors[j][k]) counts[k]++;
                     }
                 }
                 for (int m = 0; m < counts.Length; m++)
                 {
                     // cells that want to be HalfAnchors
-                    if (counts[m] == wordPair.Anchors.Count - 1)
+                    if (counts[m] == simplifiedAnchors.Count - 1)
                     {
-                        if (colUL < 2 || rowUL < 2 || BoardEntropy[rowUL][colUL] == Entropy.Resolved || (BoardEntropy[rowUL1][colUL1] == Entropy.Resolved && Board[rowUL1][colUL1][0] == '0'))
-                        {
-                            // the up-or-left neighboring cell is off the board, too close to the edge of the board, already resolved, or too close to a resolved empty cell.
-                            BoardEntropy[rowDR][colDR] = Entropy.Anchor;
-                        }
-                        else if (colDR >= Height - 2 || rowDR >= Height - 2 || (BoardEntropy[rowDR][colDR] == Entropy.Resolved && Board[rowDR][colDR][0] == '0') || (BoardEntropy[rowDR1][colDR1] == Entropy.Resolved && Board[rowDR1][colDR1][0] == '0'))
-                        {
-                            // the down-or-right neighboring cell is off the board, too close to the edge of the board, already resolved, or too close to a resolved empty cell.
-                            BoardEntropy[rowUL][colUL] = Entropy.Anchor;
-                        }
+                        bool ulBad = (
+                            // cell furthest in the upper left direction needs to be on the board
+                            !(srowULUL1 >= 0 && scolULUL2 >= 0)
+                            // none of the split cells can be occupied, unless they're explicitly empty
+                            || (Board[srowULUL1][scolULUL1].Length > 0 && Board[srowULUL1][scolULUL1][0] != '0')
+                            || (Board[srowULUL2][scolULUL2].Length > 0 && Board[srowULUL2][scolULUL2][0] != '0')
+                            || (Board[srowULDR1][scolULDR1].Length > 0 && Board[srowULDR1][scolULDR1][0] != '0')
+                            || (Board[srowULDR2][scolULDR2].Length > 0 && Board[srowULDR2][scolULDR2][0] != '0')
+                            // none of the check cells can be occupied at all
+                            || (Board[rowUL1][colUL1].Length > 0)
+                            || (Board[rowUL2][colUL2].Length > 0)
+                        );
+                        // do the same thing for down/right
+                        bool drBad = (
+                            // cell furthest in the down right direction needs to be on the board
+                            !(srowDRDR2 < Height && scolDRDR2 < Width)
+                            // none of the split cells can be occupied, unless they're explicitly empty
+                            || (Board[srowDRUL1][scolDRUL1].Length > 0 && Board[srowDRUL1][scolDRUL1][0] != '0')
+                            || (Board[srowDRUL2][scolDRUL2].Length > 0 && Board[srowDRUL2][scolDRUL2][0] != '0')
+                            || (Board[srowDRDR1][scolDRDR1].Length > 0 && Board[srowDRDR1][scolDRDR1][0] != '0')
+                            || (Board[srowDRDR2][scolDRDR2].Length > 0 && Board[srowDRDR2][scolDRDR2][0] != '0')
+                            // none of the check cells can be occupied at all
+                            || (Board[rowDR1][colDR1].Length > 0)
+                            || (Board[rowDR2][colDR2].Length > 0)
+                        );
+                        // error check tho
+                        //if (ulBad && drBad) Console.WriteLine("UH OH! ulBad && drBad in Add function!");
+                        if (ulBad) BoardEntropy[rowDR1][colDR1] = Entropy.Anchor;
+                        else if (drBad) BoardEntropy[rowUL1][colUL1] = Entropy.Anchor;
                         else
                         {
                             // both cells can be used as an anchor
-                            BoardEntropy[rowUL][colUL] = Entropy.HalfAnchor;
-                            BoardEntropy[rowDR][colDR] = Entropy.HalfAnchor;
+                            BoardEntropy[rowUL1][colUL1] = Entropy.HalfAnchor;
+                            BoardEntropy[rowDR1][colDR1] = Entropy.HalfAnchor;
                         }
                     }
                     // cells that want to be Floaters.
                     else if (counts[m] > 0)
                     {
-                        if (!(colUL < 2 || rowUL < 2 || BoardEntropy[rowUL][colUL] == Entropy.Resolved || (BoardEntropy[rowUL1][colUL1] == Entropy.Resolved && Board[rowUL1][colUL1][0] == '0')))
+                        if (!(colUL1 < 2 || rowUL1 < 2 || BoardEntropy[rowUL1][colUL1] == Entropy.Resolved || (BoardEntropy[rowUL2][colUL2] == Entropy.Resolved && Board[rowUL2][colUL2][0] == '0')))
                         {
-                            BoardEntropy[rowUL][colUL] = Entropy.Floater;
+                            BoardEntropy[rowUL1][colUL1] = Entropy.Floater;
                         }
-                        if (!(colDR >= Height - 2 || rowDR >= Height - 2 || (BoardEntropy[rowDR][colDR] == Entropy.Resolved && Board[rowDR][colDR][0] == '0') || (BoardEntropy[rowDR1][colDR1] == Entropy.Resolved && Board[rowDR1][colDR1][0] == '0')))
+                        if (!(colDR1 >= Height - 2 || rowDR1 >= Height - 2 || (BoardEntropy[rowDR1][colDR1] == Entropy.Resolved && Board[rowDR1][colDR1][0] == '0') || (BoardEntropy[rowDR2][colDR2] == Entropy.Resolved && Board[rowDR2][colDR2][0] == '0')))
                         {
-                            BoardEntropy[rowDR][colDR] = Entropy.Anchor;
+                            BoardEntropy[rowDR1][colDR1] = Entropy.Floater;
                         }
-                        // if neither of these things can be a floater, then we need to update the anchors. But I think this goes back to the earlier issue about being able to verify whether the placement is valid based on anchor conditions and adjacent criteria. TODO.
                     }
                     // for every other cell, just leaves its neighbors as their existing entropy value.
                 }
             }
-            // The Add method is "finished" here now, but I've set myself up for a hellish time when removing a wordPair, because I'd also need to undo all of its entropy changes (again, entropy reveals itself to be an inaccurate word choice here). I think a better implementation might be to have a stack of BoardEntropy instead of just a global array. I could also just pass it through the recursive functions instead of building my own "recursive stack." But also, I'm tired. TODO.
+            // The Add method is "finished" here now, but I've set myself up for a hellish time when removing a wordPair, because I'd also need to undo all of its entropy changes (again, entropy reveals itself to be an inaccurate word choice here). I think a better implementation might be to have a stack of BoardEntropy instead of just a global array. I could also just pass it through the recursive functions instead of building my own "recursive stack." But also, I'm tired. Wait a sec... isn't that just what happens when you pass the Board and BoardEntropy through to each function? TODO.
         }
 
-        public void SimplifyAnchors(WordPair wordPair, List<bool> intersections)
+        // Anchors of a WordPair are a function of the board state. Simplify anchors based on any progress that has been made when filling in the board, including when this WordPair is first placed down
+        public List<List<bool>> GetSimplifiedAnchors(WordPair wordPair, List<bool> intersections)
         {
             List<int> scores = new();
             int score;
@@ -230,7 +287,7 @@
                     simplifiedAnchors.Add(wordPair.Anchors[i]);
                 }
             }
-            wordPair.Anchors = simplifiedAnchors;
+            return simplifiedAnchors;
         }
 
         /// <summary>
@@ -245,12 +302,262 @@
         }
 
         /// <summary>
-        /// If it exists, get a cell for where to put 
+        /// Determine the validity of the Placement of a single WordPair
         /// </summary>
-        /// <param name="cellRow"></param>
-        /// <param name="cellColumn"></param>
-        /// <param name="wordPair"></param>
-        /// <returns></returns>
+        /// <param name="wordPair">WordPair to be placed on the board</param>
+        /// <param name="placement">Placement with which to place the WordPair on the board</param>
+        /// <returns>returns true if the Placement is valid for the WordPair on the board</returns>
+        public bool IsValidPlacement(WordPair wordPair, Placement placement)
+        {
+            // if the word starts off the board, it's definitely off the board
+            if (placement.Row < 0 || placement.Col < 0 || placement.Row > Height || placement.Col > Width)
+            {
+                return false;
+            }
+            // if the end of the word goes off the board, that's also invalid
+            if (placement.Dir == Orientation.Horizontal && placement.Col >= Width - wordPair.Shape.Length || placement.Dir == Orientation.Vertical && placement.Row >= Height - wordPair.Shape.Length)
+            {
+                return false;
+            }
+            // So the word pair is at least on the board. Determine whether its interactions with any of the other existing cells on the board are also valid.
+            List<bool> anchorCandidates = new();
+            for (int tile = -1; tile < wordPair.Shape.Length + 1; tile++)
+            {
+                int checkRow = placement.Row;
+                int checkCol = placement.Col;
+                if (placement.Dir == Orientation.Horizontal) checkRow += tile;
+                else checkCol += tile;
+
+                // There needs to be room for you to place an empty cell before and after the wordPair. The spacing of an empty tile is the only way to discern where one wordPair ends and where another begins.
+                if (tile < 0 || tile == wordPair.Shape.Length)
+                {
+                    if (checkRow < 0 || checkRow >= Height || checkCol < 0 || checkCol >= Width)
+                    {
+                        // unless the empty cell would be off the board, which is actually fine
+                        continue;
+                    }
+                    if (BoardEntropy[checkRow][checkCol] == Entropy.Resolved)
+                    {
+                        if (Board[checkRow][checkCol][0] != '0')
+                        {
+                            // Obvious bad case. The end of this wordPair would butt up against another wordPair.
+                            return false;
+                        }
+                        // If you're here, then the cell that has to be empty already had to be empty for some other reason. Nice!
+                        continue;
+                    }
+                    if (BoardEntropy[checkRow][checkCol] == Entropy.Anchor)
+                    {
+                        // This cell is not populated yet, but NEEDS to be populated with a letter tile. That's a contradiction.
+                        return false;
+                    }
+                    // If you've made it this far, you're able to place an empty tile here.
+                    continue;
+                }
+
+                // If you've made it this far, you're looking at intersections inside the wordPair
+                // Intersecting with a grid cell that's not resolved yet.
+                if (BoardEntropy[checkRow][checkCol] != Entropy.Resolved)
+                {
+                    // You can't place the word down next to another parallel wordPair
+                    // (well, technically you could if you were able to also resolve the overlaps into their own wordPairs in the future.)
+                    // TODO: accmmodate 'hooking' another wordPair
+
+                    // look at neighboring cells...
+                    int checkRowUL1 = checkRow;
+                    int checkColUL1 = checkCol;
+                    int checkRowDR1 = checkRow;
+                    int checkColDR1 = checkCol;
+                    // in fact, look at enough neighboring cells that you could see if there's enough room for a double-letter split
+                    // explanation of this naming convention:
+                    // checkRow: a cell that will be part of a new wordPair, if one were to be placed here
+                    // splitRow: a cell that the double-letter cells spill into, so they must be empty
+                    // UL: cell goes in the up-or-left transverse direction (ie cell goes up if placement is horizontal, left if vertical)
+                    // DR: cell goes in the down-or-right tranverse direction
+                    // 1: cell goes 1 step in the transverse direction
+                    // 2: cell goes 2 steps in the transverse direction
+                    // split cells, in addition to extending in the transverse direction of the WordPair placement, also go one more step in the same direction. So each split cell has an additional UL / DR to indicate that
+                    int checkRowUL2 = checkRow;
+                    int checkColUL2 = checkCol;
+                    int checkRowDR2 = checkRow;
+                    int checkColDR2 = checkCol;
+                    int splitColULUL1 = checkCol;
+                    int splitColULUL2 = checkCol;
+                    int splitRowULUL1 = checkRow;
+                    int splitRowULUL2 = checkRow;
+                    int splitColDRDR1 = checkCol;
+                    int splitColDRDR2 = checkCol;
+                    int splitRowDRDR1 = checkRow;
+                    int splitRowDRDR2 = checkRow;
+                    int splitColULDR1 = checkCol;
+                    int splitColULDR2 = checkCol;
+                    int splitRowULDR1 = checkRow;
+                    int splitRowULDR2 = checkRow;
+                    int splitColDRUL1 = checkCol;
+                    int splitColDRUL2 = checkCol;
+                    int splitRowDRUL1 = checkRow;
+                    int splitRowDRUL2 = checkRow;
+                    if (placement.Dir == Orientation.Horizontal)
+                    {
+                        checkColUL1 -= 1;
+                        checkColUL2 -= 2;
+                        checkColDR1 += 1;
+                        checkColDR2 += 2;
+
+                        splitColULUL1 -= 1;
+                        splitColULUL2 -= 2;
+                        splitColULDR1 -= 1;
+                        splitColULDR2 -= 2;
+                        splitColDRUL1 += 1;
+                        splitColDRUL2 += 2;
+                        splitColDRDR1 += 1;
+                        splitColDRDR2 += 2;
+
+                        splitRowULUL2 -= 1;
+                        splitRowULUL1 -= 1;
+                        splitRowULDR1 -= 1;
+                        splitRowULDR2 -= 1;
+                        splitRowDRUL1 += 1;
+                        splitRowDRUL2 += 1;
+                        splitRowDRDR1 += 1;
+                        splitRowDRDR2 += 1;
+                    }
+                    else
+                    {
+                        checkRowUL1 -= 1;
+                        checkRowUL2 -= 2;
+                        checkRowDR1 += 1;
+                        checkRowDR2 += 2;
+
+                        splitRowULUL1 -= 1;
+                        splitRowULUL2 -= 2;
+                        splitRowULDR1 -= 1;
+                        splitRowULDR2 -= 2;
+                        splitRowDRUL1 += 1;
+                        splitRowDRUL2 += 2;
+                        splitRowDRDR1 += 1;
+                        splitRowDRDR2 += 2;
+
+                        splitColULUL2 -= 1;
+                        splitColULUL1 -= 1;
+                        splitColULDR1 -= 1;
+                        splitColULDR2 -= 1;
+                        splitColDRUL1 += 1;
+                        splitColDRUL2 += 1;
+                        splitColDRDR1 += 1;
+                        splitColDRDR2 += 1;
+                    }
+                    // verify that this wordPair isn't running parallel to another one that's immediately adjacent
+                    // checkRowUL is always < checkRow, so no need to check if it's < Height or < Width
+                    if (checkRowUL1 >= 0 && checkColUL1 >= 0)
+                    {
+                        // this wordPair would run parallel to another wordPair that's immediately adjacent. Not allowed!
+                        if (Board[checkRowUL1][checkColUL1].Length > 0 && Board[checkRowUL1][checkColUL1][0] != '0')
+                        {
+                            return false;
+                        }
+                    }
+                    if (checkRowDR1 < Height && checkColDR1 < Width)
+                    {
+                        // this wordPair would run parallel to another wordPair that's immediately adjacent. Not allowed!
+                        if (Board[checkRowDR1][checkColDR1].Length > 0 && Board[checkRowDR1][checkColDR1][0] != '0')
+                        {
+                            return false;
+                        }
+                    }
+                    // verify that there's enough space to put another word, if this cell happens to be an anchor.
+                    // If the cell has more than one anchor conditions, it might be fine for a given anchor cell to be invalidated. Just keep track of that.
+                    // Also, my technique for verifying that there's enough space to place another word takes a shortcut, reliant on the fact that I don't support hooking yet. So... TODO.
+                    // Check the up/left direction to see if anything's amiss
+                    bool ulBad = (
+                        // cell furthest in the upper left direction needs to be on the board
+                        !(splitRowULUL1 >= 0 && splitColULUL2 >= 0)
+                        // none of the split cells can be occupied, unless they're explicitly empty
+                        || (Board[splitRowULUL1][splitColULUL1].Length > 0 && Board[splitRowULUL1][splitColULUL1][0] != '0')
+                        || (Board[splitRowULUL2][splitColULUL2].Length > 0 && Board[splitRowULUL2][splitColULUL2][0] != '0')
+                        || (Board[splitRowULDR1][splitColULDR1].Length > 0 && Board[splitRowULDR1][splitColULDR1][0] != '0')
+                        || (Board[splitRowULDR2][splitColULDR2].Length > 0 && Board[splitRowULDR2][splitColULDR2][0] != '0')
+                        // none of the check cells can be occupied at all
+                        || (Board[checkRowUL1][checkColUL1].Length > 0)
+                        || (Board[checkRowUL2][checkColUL2].Length > 0)
+                    );
+                    // do the same thing for down/right
+                    bool drBad = (
+                        // cell furthest in the down right direction needs to be on the board
+                        !(splitRowDRDR2 < Height && splitColDRDR2 < Width)
+                        // none of the split cells can be occupied, unless they're explicitly empty
+                        || (Board[splitRowDRUL1][splitColDRUL1].Length > 0 && Board[splitRowDRUL1][splitColDRUL1][0] != '0')
+                        || (Board[splitRowDRUL2][splitColDRUL2].Length > 0 && Board[splitRowDRUL2][splitColDRUL2][0] != '0')
+                        || (Board[splitRowDRDR1][splitColDRDR1].Length > 0 && Board[splitRowDRDR1][splitColDRDR1][0] != '0')
+                        || (Board[splitRowDRDR2][splitColDRDR2].Length > 0 && Board[splitRowDRDR2][splitColDRDR2][0] != '0')
+                        // none of the check cells can be occupied at all
+                        || (Board[checkRowDR1][checkColDR1].Length > 0)
+                        || (Board[checkRowDR2][checkColDR2].Length > 0)
+                    );
+                    // this could be an anchor candidate as long as both UL and DR aren't bad
+                    anchorCandidates.Add(!(ulBad && drBad));
+                }
+                // If you're creating another intersection on the board...
+                else
+                {
+                    anchorCandidates.Add(true);
+                    if (tile >= wordPair.Shape.Index && tile <= wordPair.Shape.Index + 1)
+                    {
+                        // you're trying to place a double letter tile over a tile that was already filled in. That's no good.
+                        return false;
+                    }
+                    char compLetter;
+                    if (tile < wordPair.Shape.Index)
+                    {
+                        compLetter = wordPair.Letters[tile];
+                    }
+                    else
+                    {
+                        compLetter = wordPair.Letters[tile - 2];
+                    }
+                    if (compLetter != Board[checkRow][checkCol][0])
+                    {
+                        // you're trying to create an intersection between two letters that aren't the same. That won't work.
+                        // This also applies exactly the same as if the cell is forced to be empty, ie its entropy is resolved and its value is '0'
+                        return false;
+                    }
+                    // if you've made it this far, then you're either trying to make an ordinary intersection, or you're going to find out very soon that you're trying to make an intersection like (ac/sa)me onto me(an/nd) by the shared 'me' (which is invalidated by the earlier rule of "there needs to be an empty cell at the start and end of each wordPair).
+                    continue;
+                }
+            }
+            // if you've made it this far, you're able to compare anchors. At least one anchor condition must be able to be satisfied in this placement.
+            bool passAny = false;
+            foreach (List<bool> anchor in wordPair.Anchors)
+            {
+                bool passThis = true;
+                for (int ai = 0; ai < anchor.Count; ai++)
+                {
+                    // if anchor[ai] then anchorCandidates[ai] must be true for this anchor to pass
+                    if (anchor[ai] && (!anchorCandidates[ai]))
+                    {
+                        passThis = false;
+                        break;
+                    }
+                }
+                passAny = passAny || passThis;
+                if (passAny) break;
+            }
+            // if any of the anchor conditions pass, you're good to go.
+            if (!passAny) return false;
+            // if you made it this far, this placement isn't inherently invalid. Nice!
+            return true;
+        }
+
+        /// <summary>
+        /// Get all the valid (or at least not-inherently-invalid) placements
+        /// for a WordPair on the Board such that it intersects the given cell.
+        /// If the cell is not provided, this function assumes you're starting
+        /// from an empty board and provides all possible starting placements.
+        /// </summary>
+        /// <param name="wordPair">WordPair to be placed on the board</param>
+        /// <param name="cellRow">row of cell to be intersected by WordPair</param>
+        /// <param name="cellCol">col of cell to be intersected by WordPair</param>
+        /// <returns>all possible placements of the WordPair. Sometimes there are no possible placements, in which case this will be null</returns>
         public List<Placement>? ValidPlacements(WordPair wordPair, int cellRow=-1, int cellCol=-1)
         {
             List<Placement> placements = new();  // to be returned at the end of the function
@@ -288,11 +595,11 @@
                 return null;
             }
             // If you've made it this far, you're starting from a not-null cell
-            // Handle the remaining trivial cases
+            // Handle the remaining trivial case
             if (Board[cellRow][cellCol].Length > 1 || Board[cellRow][cellCol] == "0")
             {
                 // If the cell is already assigned to as being empty or a double-letter tile,
-                // then no, there is never a valid intersection here. So yes it's invalid
+                // then no, there is never a valid placement here.
                 return null;
             }
             
@@ -316,131 +623,9 @@
             // ... and now try to rule out each of the possible placements
             foreach (Placement placement in possibilities)
             {
-                // if the word starts off the board, it's definitely off the board
-                if (placement.Row < 0 || placement.Col < 0 || placement.Row > Height || placement.Col > Width)
-                {
-                    continue;
-                }
-                // if the end of the word goes off the board, that's also invalid
-                if (placement.Dir == Orientation.Horizontal && placement.Col >= Width - wordPair.Shape.Length || placement.Dir == Orientation.Vertical && placement.Row >= Height - wordPair.Shape.Length)
-                {
-                    continue;
-                }
-                // So the word pair is at least on the board. Determine whether its interactions with any of the other existing cells on the board are also valid.
-                bool broken = false;
-                for (int tile = -1; tile < wordPair.Shape.Length + 1; tile++)
-                {
-                    int checkRow = placement.Row;
-                    int checkCol = placement.Col;
-                    if (placement.Dir == Orientation.Horizontal) checkRow += tile;
-                    else checkCol += tile;
-
-                    // There needs to be room for you to place an empty cell before and after the wordPair. The spacing of an empty tile is the only way to discern where one wordPair ends and where another begins.
-                    if (tile < 0 || tile == wordPair.Shape.Length)
-                    {
-                        if (checkRow < 0 || checkRow >= Height || checkCol < 0 || checkCol >= Width)
-                        {
-                            // unless the empty cell would be off the board, which is actually fine
-                            continue;
-                        }
-                        if (BoardEntropy[checkRow][checkCol] == Entropy.Resolved)
-                        {
-                            if (Board[checkRow][checkCol][0] != '0')
-                            {
-                                // Obvious bad case. The end of this wordPair would butt up against another wordPair.
-                                broken = true;
-                                break;
-                            }
-                            // If you're here, then the cell that has to be empty already had to be empty for some other reason. Nice!
-                            continue;
-                        }
-                        if (BoardEntropy[checkRow][checkCol] == Entropy.Anchor)
-                        {
-                            // This cell is not populated yet, but NEEDS to be populated with a letter tile. That's a contradiction.
-                            broken = true;
-                            break;
-                        }
-                        // If you've made it this far, you're able to place an empty tile here.
-                        continue;
-                    }
-
-                    // If you've made it this far, you're looking at intersections inside the wordPair
-                    // Intersecting with a grid cell that's not resolved yet.
-                    if (BoardEntropy[checkRow][checkCol] != Entropy.Resolved)
-                    {
-                        // You can't place the word down next to another parallel wordPair
-                        // (well, technically you could if you were able to also resolve the overlaps into their own wordPairs in the future.)
-                        // TODO: accmmodate 'hooking' another wordPair
-
-                        // look at neighboring cells...
-                        int checkRowUL = checkRow;
-                        int checkColUL = checkCol;
-                        int checkRowDR = checkRow;
-                        int checkColDR = checkCol;
-                        if (placement.Dir == Orientation.Horizontal)
-                        {
-                            checkColUL--;
-                            checkColDR++;
-                        }
-                        else
-                        {
-                            checkRowUL--;
-                            checkRowDR++;
-                        }
-                        if (checkRowUL >= 0 && checkRowUL < Height && checkColUL >= 0 && checkColUL < Width)
-                        {
-                            // this wordPair would run parallel to another wordPair that's immediately adjacent. Not allowed!
-                            if (Board[checkRowUL][checkColUL].Length > 0 && Board[checkRowUL][checkColUL][0] != '0')
-                            {
-                                broken = true;
-                                break;
-                            }
-                        }
-                        if (checkRowDR >= 0 && checkRowDR < Height && checkColDR >= 0 && checkColDR < Width)
-                        {
-                            // this wordPair would run parallel to another wordPair that's immediately adjacent. Not allowed!
-                            if (Board[checkRowDR][checkColDR].Length > 0 && Board[checkRowDR][checkColDR][0] != '0')
-                            {
-                                broken = true;
-                                break;
-                            }
-                        }
-                        // this cell is fine if you've made it this far.
-                        continue;
-                    }
-                    // If you're creating another intersection on the board...
-                    else
-                    {
-                        if (tile >= wordPair.Shape.Index && tile <= wordPair.Shape.Index + 1)
-                        {
-                            // you're trying to place a double letter tile over a tile that was already filled in. That's no good.
-                            broken = true;
-                            break;
-                        }
-                        char compLetter;
-                        if (tile < wordPair.Shape.Index)
-                        {
-                            compLetter = wordPair.Letters[tile];
-                        }
-                        else
-                        {
-                            compLetter = wordPair.Letters[tile - 2];
-                        }
-                        if (compLetter != Board[checkRow][checkCol][0])
-                        {
-                            // you're trying to create an intersection between two letters that aren't the same. That won't work.
-                            // This also applies exactly the same as if the cell is forced to be empty, ie its entropy is resolved and its value is '0'
-                            broken = true;
-                            break;
-                        }
-                        // if you've made it this far, then you're either trying to make an ordinary intersection, or you're going to find out very soon that you're trying to make an intersection like (ac/sa)me onto me(an/nd) by the shared 'me' (which is invalidated by the earlier rule of "there needs to be an empty cell at the start and end of each wordPair).
-                        continue;
-                    }
-                }
-                if (broken) continue;
-                // if you made it this far, this placement isn't inherently invalid. Nice!
-                placements.Add(placement);
+                if (IsValidPlacement(wordPair, placement)) placements.Add(placement);
             }
+            if (placements.Count == 0) return null;
             return placements;
         }
 
