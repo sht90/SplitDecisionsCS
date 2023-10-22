@@ -10,15 +10,15 @@
         List<WordPair> UsedWordPairs;
         List<string> UsedWords;
 
-        Dictionary<Entropy, List<List<int>>> CellsQueue;
         // list of lists, sorted by entropy value
         //   list of cells, in arbitrary order
         //     list of ints: row, col
+        Dictionary<Entropy, List<List<int>>> CellsQueue;
+        // list of strings to indicate board cells
         string[][] Board;
         Entropy[][] BoardEntropy;
-        // list of strings to indicate board cells
-        Dictionary<WordPair, List<List<int>>> WordPairCellsLUT;
         // LUT for wordpairs that are actually on the board, and their cells
+        Dictionary<WordPair, List<List<int>>> WordPairCellsLUT;
 
         public enum Entropy
         {
