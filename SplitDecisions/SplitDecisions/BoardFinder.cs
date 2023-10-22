@@ -332,7 +332,7 @@
             {
                 return false;
             }
-            // So the word pair is at least on the board. Determine whether its interactions with any of the other existing cells on the board are also valid.
+            // So the word pair is at least on the board. Determine whether its interactions with any of the other existing cells on the board are also valid. Traverse the WordPair one cell at a time.
             List<bool> anchorCandidates = new();
             for (int tile = -1; tile < wordPair.Shape.Length + 1; tile++)
             {
@@ -368,167 +368,18 @@
                     continue;
                 }
 
-                // If you've made it this far, you're looking at intersections inside the wordPair
-                // Intersecting with a grid cell that's not resolved yet.
-                if (BoardEntropy[checkRow][checkCol] != Entropy.Resolved)
-                {
-                    // You can't place the word down next to another parallel wordPair
-                    // (well, technically you could if you were able to also resolve the overlaps into their own wordPairs in the future.)
-                    // TODO: accmmodate 'hooking' another wordPair
-
-                    // look at neighboring cells...
-                    int checkRowUL1 = checkRow;
-                    int checkColUL1 = checkCol;
-                    int checkRowDR1 = checkRow;
-                    int checkColDR1 = checkCol;
-                    // in fact, look at enough neighboring cells that you could see if there's enough room for a double-letter split
-                    // explanation of this naming convention:
-                    // checkRow: a cell that will be part of a new wordPair, if one were to be placed here
-                    // splitRow: a cell that the double-letter cells spill into, so they must be empty
-                    // UL: cell goes in the up-or-left transverse direction (ie cell goes up if placement is horizontal, left if vertical)
-                    // DR: cell goes in the down-or-right tranverse direction
-                    // 1: cell goes 1 step in the transverse direction
-                    // 2: cell goes 2 steps in the transverse direction
-                    // split cells, in addition to extending in the transverse direction of the WordPair placement, also go one more step in the same direction. So each split cell has an additional UL / DR to indicate that
-                    int checkRowUL2 = checkRow;
-                    int checkColUL2 = checkCol;
-                    int checkRowDR2 = checkRow;
-                    int checkColDR2 = checkCol;
-                    int splitColULUL1 = checkCol;
-                    int splitColULUL2 = checkCol;
-                    int splitRowULUL1 = checkRow;
-                    int splitRowULUL2 = checkRow;
-                    int splitColDRDR1 = checkCol;
-                    int splitColDRDR2 = checkCol;
-                    int splitRowDRDR1 = checkRow;
-                    int splitRowDRDR2 = checkRow;
-                    int splitColULDR1 = checkCol;
-                    int splitColULDR2 = checkCol;
-                    int splitRowULDR1 = checkRow;
-                    int splitRowULDR2 = checkRow;
-                    int splitColDRUL1 = checkCol;
-                    int splitColDRUL2 = checkCol;
-                    int splitRowDRUL1 = checkRow;
-                    int splitRowDRUL2 = checkRow;
-                    if (placement.Dir == Orientation.Horizontal)
-                    {
-                        checkColUL1 -= 1;
-                        checkColUL2 -= 2;
-                        checkColDR1 += 1;
-                        checkColDR2 += 2;
-
-                        splitColULUL1 -= 1;
-                        splitColULUL2 -= 2;
-                        splitColULDR1 -= 1;
-                        splitColULDR2 -= 2;
-                        splitColDRUL1 += 1;
-                        splitColDRUL2 += 2;
-                        splitColDRDR1 += 1;
-                        splitColDRDR2 += 2;
-
-                        splitRowULUL2 -= 1;
-                        splitRowULUL1 -= 1;
-                        splitRowULDR1 -= 1;
-                        splitRowULDR2 -= 1;
-                        splitRowDRUL1 += 1;
-                        splitRowDRUL2 += 1;
-                        splitRowDRDR1 += 1;
-                        splitRowDRDR2 += 1;
-                    }
-                    else
-                    {
-                        checkRowUL1 -= 1;
-                        checkRowUL2 -= 2;
-                        checkRowDR1 += 1;
-                        checkRowDR2 += 2;
-
-                        splitRowULUL1 -= 1;
-                        splitRowULUL2 -= 2;
-                        splitRowULDR1 -= 1;
-                        splitRowULDR2 -= 2;
-                        splitRowDRUL1 += 1;
-                        splitRowDRUL2 += 2;
-                        splitRowDRDR1 += 1;
-                        splitRowDRDR2 += 2;
-
-                        splitColULUL2 -= 1;
-                        splitColULUL1 -= 1;
-                        splitColULDR1 -= 1;
-                        splitColULDR2 -= 1;
-                        splitColDRUL1 += 1;
-                        splitColDRUL2 += 1;
-                        splitColDRDR1 += 1;
-                        splitColDRDR2 += 1;
-                    }
-                    // verify that this wordPair isn't running parallel to another one that's immediately adjacent
-                    // checkRowUL is always < checkRow, so no need to check if it's < Height or < Width
-                    if (checkRowUL1 >= 0 && checkColUL1 >= 0)
-                    {
-                        // this wordPair would run parallel to another wordPair that's immediately adjacent. Not allowed!
-                        if (Board[checkRowUL1][checkColUL1].Length > 0 && Board[checkRowUL1][checkColUL1][0] != '0')
-                        {
-                            return false;
-                        }
-                    }
-                    if (checkRowDR1 < Height && checkColDR1 < Width)
-                    {
-                        // this wordPair would run parallel to another wordPair that's immediately adjacent. Not allowed!
-                        if (Board[checkRowDR1][checkColDR1].Length > 0 && Board[checkRowDR1][checkColDR1][0] != '0')
-                        {
-                            return false;
-                        }
-                    }
-                    // verify that there's enough space to put another word, if this cell happens to be an anchor.
-                    // If the cell has more than one anchor conditions, it might be fine for a given anchor cell to be invalidated. Just keep track of that.
-                    // Also, my technique for verifying that there's enough space to place another word takes a shortcut, reliant on the fact that I don't support hooking yet. So... TODO.
-                    // Check the up/left direction to see if anything's amiss
-                    bool ulBad = (
-                        // cell furthest in the upper left direction needs to be on the board
-                        !(splitRowULUL1 >= 0 && splitColULUL2 >= 0)
-                        // none of the split cells can be occupied, unless they're explicitly empty
-                        || (Board[splitRowULUL1][splitColULUL1].Length > 0 && Board[splitRowULUL1][splitColULUL1][0] != '0')
-                        || (Board[splitRowULUL2][splitColULUL2].Length > 0 && Board[splitRowULUL2][splitColULUL2][0] != '0')
-                        || (Board[splitRowULDR1][splitColULDR1].Length > 0 && Board[splitRowULDR1][splitColULDR1][0] != '0')
-                        || (Board[splitRowULDR2][splitColULDR2].Length > 0 && Board[splitRowULDR2][splitColULDR2][0] != '0')
-                        // none of the check cells can be occupied at all
-                        || (Board[checkRowUL1][checkColUL1].Length > 0)
-                        || (Board[checkRowUL2][checkColUL2].Length > 0)
-                    );
-                    // do the same thing for down/right
-                    bool drBad = (
-                        // cell furthest in the down right direction needs to be on the board
-                        !(splitRowDRDR2 < Height && splitColDRDR2 < Width)
-                        // none of the split cells can be occupied, unless they're explicitly empty
-                        || (Board[splitRowDRUL1][splitColDRUL1].Length > 0 && Board[splitRowDRUL1][splitColDRUL1][0] != '0')
-                        || (Board[splitRowDRUL2][splitColDRUL2].Length > 0 && Board[splitRowDRUL2][splitColDRUL2][0] != '0')
-                        || (Board[splitRowDRDR1][splitColDRDR1].Length > 0 && Board[splitRowDRDR1][splitColDRDR1][0] != '0')
-                        || (Board[splitRowDRDR2][splitColDRDR2].Length > 0 && Board[splitRowDRDR2][splitColDRDR2][0] != '0')
-                        // none of the check cells can be occupied at all
-                        || (Board[checkRowDR1][checkColDR1].Length > 0)
-                        || (Board[checkRowDR2][checkColDR2].Length > 0)
-                    );
-                    // this could be an anchor candidate as long as both UL and DR aren't bad
-                    anchorCandidates.Add(!(ulBad && drBad));
-                }
-                // If you're creating another intersection on the board...
-                else
+                // If you've made it this far, you're looking at behavior inside the wordPair
+                // Start with intersections with a preexisting cell
+                if (BoardEntropy[checkRow][checkCol] == Entropy.Resolved)
                 {
                     anchorCandidates.Add(true);
-                    if (tile >= wordPair.Shape.Index && tile <= wordPair.Shape.Index + 1)
+                    string compTile = wordPair[tile];
+                    if (compTile.Length > 1)
                     {
                         // you're trying to place a double letter tile over a tile that was already filled in. That's no good.
                         return false;
                     }
-                    char compLetter;
-                    if (tile < wordPair.Shape.Index)
-                    {
-                        compLetter = wordPair.Letters[tile];
-                    }
-                    else
-                    {
-                        compLetter = wordPair.Letters[tile - 2];
-                    }
-                    if (compLetter != Board[checkRow][checkCol][0])
+                    if (compTile != Board[checkRow][checkCol])
                     {
                         // you're trying to create an intersection between two letters that aren't the same. That won't work.
                         // This also applies exactly the same as if the cell is forced to be empty, ie its entropy is resolved and its value is '0'
@@ -537,6 +388,145 @@
                     // if you've made it this far, then you're either trying to make an ordinary intersection, or you're going to find out very soon that you're trying to make an intersection like (ac/sa)me onto me(an/nd) by the shared 'me' (which is invalidated by the earlier rule of "there needs to be an empty cell at the start and end of each wordPair).
                     continue;
                 }
+                // Intersecting with a grid cell that's not resolved yet.
+                // You can't place the word down next to another parallel wordPair
+                // (well, technically you could if you were able to also resolve the overlaps into their own wordPairs in the future.)
+                // TODO: accmmodate 'hooking' another wordPair
+
+                // It'll also be important to look at neighboring cells...
+                int checkRowUL1 = checkRow;
+                int checkColUL1 = checkCol;
+                int checkRowDR1 = checkRow;
+                int checkColDR1 = checkCol;
+                // in fact, look at enough neighboring cells that you could see if there's enough room for a double-letter split
+                // explanation of this naming convention:
+                // checkRow: a cell that will be part of a new wordPair, if one were to be placed here
+                // splitRow: a cell that the double-letter cells spill into, so they must be empty
+                // UL: cell goes in the up-or-left transverse direction (ie cell goes up if placement is horizontal, left if vertical)
+                // DR: cell goes in the down-or-right tranverse direction
+                // 1: cell goes 1 step in the transverse direction
+                // 2: cell goes 2 steps in the transverse direction
+                // split cells, in addition to extending in the transverse direction of the WordPair placement, also go one more step in the same direction. So each split cell has an additional UL / DR to indicate that
+                int checkRowUL2 = checkRow;
+                int checkColUL2 = checkCol;
+                int checkRowDR2 = checkRow;
+                int checkColDR2 = checkCol;
+                int splitColULUL1 = checkCol;
+                int splitColULUL2 = checkCol;
+                int splitRowULUL1 = checkRow;
+                int splitRowULUL2 = checkRow;
+                int splitColDRDR1 = checkCol;
+                int splitColDRDR2 = checkCol;
+                int splitRowDRDR1 = checkRow;
+                int splitRowDRDR2 = checkRow;
+                int splitColULDR1 = checkCol;
+                int splitColULDR2 = checkCol;
+                int splitRowULDR1 = checkRow;
+                int splitRowULDR2 = checkRow;
+                int splitColDRUL1 = checkCol;
+                int splitColDRUL2 = checkCol;
+                int splitRowDRUL1 = checkRow;
+                int splitRowDRUL2 = checkRow;
+                if (placement.Dir == Orientation.Horizontal)
+                {
+                    checkColUL1 -= 1;
+                    checkColUL2 -= 2;
+                    checkColDR1 += 1;
+                    checkColDR2 += 2;
+
+                    splitColULUL1 -= 1;
+                    splitColULUL2 -= 2;
+                    splitColULDR1 -= 1;
+                    splitColULDR2 -= 2;
+                    splitColDRUL1 += 1;
+                    splitColDRUL2 += 2;
+                    splitColDRDR1 += 1;
+                    splitColDRDR2 += 2;
+
+                    splitRowULUL2 -= 1;
+                    splitRowULUL1 -= 1;
+                    splitRowULDR1 -= 1;
+                    splitRowULDR2 -= 1;
+                    splitRowDRUL1 += 1;
+                    splitRowDRUL2 += 1;
+                    splitRowDRDR1 += 1;
+                    splitRowDRDR2 += 1;
+                }
+                else
+                {
+                    checkRowUL1 -= 1;
+                    checkRowUL2 -= 2;
+                    checkRowDR1 += 1;
+                    checkRowDR2 += 2;
+
+                    splitRowULUL1 -= 1;
+                    splitRowULUL2 -= 2;
+                    splitRowULDR1 -= 1;
+                    splitRowULDR2 -= 2;
+                    splitRowDRUL1 += 1;
+                    splitRowDRUL2 += 2;
+                    splitRowDRDR1 += 1;
+                    splitRowDRDR2 += 2;
+
+                    splitColULUL2 -= 1;
+                    splitColULUL1 -= 1;
+                    splitColULDR1 -= 1;
+                    splitColULDR2 -= 1;
+                    splitColDRUL1 += 1;
+                    splitColDRUL2 += 1;
+                    splitColDRDR1 += 1;
+                    splitColDRDR2 += 1;
+                }
+
+                // verify that this wordPair isn't running parallel to another one that's immediately adjacent
+                // checkRowUL is always < checkRow, so no need to check if it's < Height or < Width
+                if (checkRowUL1 >= 0 && checkColUL1 >= 0)
+                {
+                    // this wordPair would run parallel to another wordPair that's immediately adjacent. Not allowed!
+                    if (Board[checkRowUL1][checkColUL1].Length > 0 && Board[checkRowUL1][checkColUL1][0] != '0')
+                    {
+                        return false;
+                    }
+                }
+                if (checkRowDR1 < Height && checkColDR1 < Width)
+                {
+                    // this wordPair would run parallel to another wordPair that's immediately adjacent. Not allowed!
+                    if (Board[checkRowDR1][checkColDR1].Length > 0 && Board[checkRowDR1][checkColDR1][0] != '0')
+                    {
+                        return false;
+                    }
+                }
+                // verify that there's enough space to put another word, if this cell happens to be an anchor.
+                // If the cell has more than one anchor conditions, it might be fine for a given anchor cell to be invalidated. Just keep track of that.
+                // Also, my technique for verifying that there's enough space to place another word takes a shortcut, reliant on the fact that I don't support hooking yet. So... TODO.
+                // Check the up/left direction to see if anything's amiss
+                bool ulBad = (
+                    // cell furthest in the upper left direction needs to be on the board
+                    !(splitRowULUL1 >= 0 && splitColULUL2 >= 0)
+                    // none of the split cells can be occupied, unless they're explicitly empty
+                    || (Board[splitRowULUL1][splitColULUL1].Length > 0 && Board[splitRowULUL1][splitColULUL1][0] != '0')
+                    || (Board[splitRowULUL2][splitColULUL2].Length > 0 && Board[splitRowULUL2][splitColULUL2][0] != '0')
+                    || (Board[splitRowULDR1][splitColULDR1].Length > 0 && Board[splitRowULDR1][splitColULDR1][0] != '0')
+                    || (Board[splitRowULDR2][splitColULDR2].Length > 0 && Board[splitRowULDR2][splitColULDR2][0] != '0')
+                    // none of the check cells can be occupied at all
+                    || (Board[checkRowUL1][checkColUL1].Length > 0)
+                    || (Board[checkRowUL2][checkColUL2].Length > 0)
+                );
+                // do the same thing for down/right
+                bool drBad = (
+                    // cell furthest in the down right direction needs to be on the board
+                    !(splitRowDRDR2 < Height && splitColDRDR2 < Width)
+                    // none of the split cells can be occupied, unless they're explicitly empty
+                    || (Board[splitRowDRUL1][splitColDRUL1].Length > 0 && Board[splitRowDRUL1][splitColDRUL1][0] != '0')
+                    || (Board[splitRowDRUL2][splitColDRUL2].Length > 0 && Board[splitRowDRUL2][splitColDRUL2][0] != '0')
+                    || (Board[splitRowDRDR1][splitColDRDR1].Length > 0 && Board[splitRowDRDR1][splitColDRDR1][0] != '0')
+                    || (Board[splitRowDRDR2][splitColDRDR2].Length > 0 && Board[splitRowDRDR2][splitColDRDR2][0] != '0')
+                    // none of the check cells can be occupied at all
+                    || (Board[checkRowDR1][checkColDR1].Length > 0)
+                    || (Board[checkRowDR2][checkColDR2].Length > 0)
+                );
+                // this could be an anchor candidate as long as both UL and DR aren't bad
+                anchorCandidates.Add(!(ulBad && drBad));
             }
             // if you've made it this far, you're able to compare anchors. At least one anchor condition must be able to be satisfied in this placement.
             bool passAny = false;
