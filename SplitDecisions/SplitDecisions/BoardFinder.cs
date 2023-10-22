@@ -17,8 +17,9 @@
         // list of strings to indicate board cells
         string[][] Board;
         Entropy[][] BoardEntropy;
-        // LUT for wordpairs that are actually on the board, and their cells
-        Dictionary<WordPair, List<List<int>>> WordPairCellsLUT;
+        // map between WordPairs and their respective cells
+        Dictionary<WordPair, List<List<int>>> WordPairToCellsLUT;
+        Dictionary<List<int>, List<WordPair>> CellsToWordPairsLUT;
 
         public enum Entropy
         {
@@ -50,7 +51,16 @@
                 { Entropy.Floater, new List<List<int>>() }
                 // This is just the queue. A resolved cell is effectively off the queue, and a default cell effectively hasn't been put on the queue yet.
             };
-            WordPairCellsLUT = new() { };
+            WordPairToCellsLUT = new() { };
+            CellsToWordPairsLUT = new() { };
+            // May as well init CellsToWordPairsLUT with every possible cell in the constructor.
+            for (int i = 0; i < Width; i++)
+            {
+                for (int j = 0; j < Height; j++)
+                {
+                    CellsToWordPairsLUT.Add(new List<int>() { i, j }, new List<WordPair>() { });
+                }
+            }
         }
 
         /// <summary>
@@ -110,7 +120,11 @@
                 }
             }
             // add cells list to LUT
-            WordPairCellsLUT.Add(wordPair, cells);
+            WordPairToCellsLUT.Add(wordPair, cells);
+            foreach (List<int> cell in cells)
+            {
+                CellsToWordPairsLUT[cell].Add(wordPair);
+            }
             // narrow down the anchor conditions based on the current intersections
             List<List<bool>> simplifiedAnchors = GetSimplifiedAnchors(wordPair, currentIntersections);
             // now go back for another traversal, to establish entropy values of neighboring cells
