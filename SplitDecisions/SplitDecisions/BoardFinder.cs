@@ -253,23 +253,34 @@
             // The Add method is "finished" here now, but I've set myself up for a hellish time when removing a wordPair, because I'd also need to undo all of its entropy changes (again, entropy reveals itself to be an inaccurate word choice here). I think a better implementation might be to have a stack of BoardEntropy instead of just a global array. I could also just pass it through the recursive functions instead of building my own "recursive stack." But also, I'm tired. Wait a sec... isn't that just what happens when you pass the Board and BoardEntropy through to each function? TODO.
         }
 
-        // Anchors of a WordPair are a function of the board state. Simplify anchors based on any progress that has been made when filling in the board, including when this WordPair is first placed down
+        /// <summary>
+        /// For modifying board entropy, it's less helpful to have the full anchors list to work with. Return a simplified one with all of the intersections already resolved.
+        /// </summary>
+        /// <param name="wordPair">WordPair with original anchors list</param>
+        /// <param name="intersections">List of bools as long as the single letters in WordPair, where true represents an intersection with another WordPair on the board</param>
+        /// <returns></returns>
         public List<List<bool>> GetSimplifiedAnchors(WordPair wordPair, List<bool> intersections)
         {
+            // Start with a copy of anchors that you can modify
+            List<List<bool>> anchors = wordPair.Anchors;
+            // Also keep track of a score. 
             List<int> scores = new();
             int score;
-            foreach (List<bool> anchor in wordPair.Anchors)
+            // Traverse through each anchor
+            for (int j = 0; j < anchors.Count; j++)
             {
                 score = 0;
-                for (int i = 0; i < anchor.Count; i++)
+                for (int i = 0; i < anchors[j].Count; i++)
                 {
-                    if (anchor[i] && !intersections[i])
+                    // If the anchor is already intersecting something, then its purpose is already fulfilled.
+                    if (anchors[j][i] && intersections[i])
+                    {
+                        anchors[j][i] = false;
+                    }
+                    // We only care about anchor conditions with the lowest number of anchors (ie the lowest score). Since we might've changed that in the previou few lines, keep track of score here.
+                    if (anchors[j][i])
                     {
                         score += 1;
-                    }
-                    if (anchor[i] && intersections[i])
-                    {
-                        anchor[i] = false;
                     }
                 }
                 scores.Add(score);
@@ -279,14 +290,16 @@
             {
                 if (s < minScore) minScore = s;
             }
+            // Let simplifiedAnchors be our modified anchors list, but only the ones that are tied for the new lowest score.
             List<List<bool>> simplifiedAnchors = new();
-            for (int i = 0; i < wordPair.Anchors.Count(); i++)
+            for (int i = 0; i < anchors.Count(); i++)
             {
                 if (scores[i] == minScore)
                 {
-                    simplifiedAnchors.Add(wordPair.Anchors[i]);
+                    simplifiedAnchors.Add(anchors[i]);
                 }
             }
+            // Return the result
             return simplifiedAnchors;
         }
 
