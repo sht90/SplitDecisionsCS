@@ -93,7 +93,12 @@
                 for (int c = 0; c < board[r].Length; c++)
                 {
                     if (c != 0) boardRep += " ";
-                    if (Contents) boardRep += board[r][c].Contents;
+                    if (Contents)
+                    {
+                        // default cells should be empty
+                        if (board[r][c].Contents == "") boardRep += "0";
+                        else boardRep += board[r][c].Contents;
+                    }
                     if (Contents && Entropy) boardRep += "|";
                     if (Entropy) boardRep += board[r][c].Entropy.ToString();
                 }
