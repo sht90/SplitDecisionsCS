@@ -84,6 +84,30 @@
             }
         }
 
+        public static void PrintBoard(Cell[][] board, bool Contents=true, bool Entropy=false, bool toConsole=true, string fileName="")
+        {
+            string boardRep = "";
+            for (int r = 0; r < board.Length; r++)
+            {
+                if (r != 0) boardRep += "\n";
+                for (int c = 0; c < board[r].Length; c++)
+                {
+                    if (c != 0) boardRep += " ";
+                    if (Contents) boardRep += board[r][c].Contents;
+                    if (Contents && Entropy) boardRep += "|";
+                    if (Entropy) boardRep += board[r][c].Entropy.ToString();
+                }
+            }
+            if (toConsole)
+            {
+                Console.WriteLine(boardRep);
+            }
+            if (fileName != "")
+            {
+                File.WriteAllText(fileName, boardRep);
+            }
+        }
+
         public string[][] Solve()
         {
             Cell[][] board = Board;
