@@ -501,9 +501,21 @@
                         // This also applies exactly the same as if the cell is forced to be empty, ie its entropy is resolved and its value is '0'
                         return false;
                     }
+                    // if an adjacent cell is an anchor or halfanchor, we also care about whether this WordPair would violate any mistakeables
+                    if ((placement.Dir == Orientation.Horizontal && checkCol < Width && (board[checkRow][checkCol + 1].Entropy == Entropy.Anchor || board[checkRow][checkCol + 1].Entropy == Entropy.HalfAnchor)) || (placement.Dir == Orientation.Horizontal && checkCol > 0 && (board[checkRow][checkCol - 1].Entropy == Entropy.Anchor || board[checkRow][checkCol - 1].Entropy == Entropy.HalfAnchor))
+                      || (placement.Dir == Orientation.Vertical && checkRow < Height && (board[checkRow + 1][checkCol].Entropy == Entropy.Anchor || board[checkRow + 1][checkCol].Entropy == Entropy.HalfAnchor)) || (placement.Dir == Orientation.Vertical && checkRow > 0 && (board[checkRow - 1][checkCol].Entropy == Entropy.Anchor || board[checkRow - 1][checkCol].Entropy == Entropy.HalfAnchor)))
+                    {
+                        // check mistakeables
+                        // we know this is valid syntax. If it weren't, well, we would've hit problems way earlier
+                        WordPair intersector = CellsToWordPairsLUT[new List<int>() { checkRow, checkCol }][0];
+                        // now we need to find which cell in the intersector we're intersecting
+                        // TODO: wait a sec... we need to know the placements too.
+                        //intersector.Mistakeables
+                    }
                     // if you've made it this far, then you're either trying to make an ordinary intersection, or you're going to find out very soon that you're trying to make an intersection like (ac/sa)me onto me(an/nd) by the shared 'me' (which is invalidated by the earlier rule of "there needs to be an empty cell at the start and end of each wordPair).
                     continue;
                 }
+
                 // Intersecting with a grid cell that's not resolved yet.
                 // You can't place the word down next to another parallel wordPair
                 // (well, technically you could if you were able to also resolve the overlaps into their own wordPairs in the future.)
