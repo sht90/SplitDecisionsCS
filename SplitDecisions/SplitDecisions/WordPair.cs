@@ -130,4 +130,53 @@
             return this.Letters.CompareTo(other.Letters);
         }
     }
+
+    internal class BoardWordPair : WordPair
+    {
+        public Placement Placement { get; set; }
+        public BoardWordPair(Shape shape, string word1, string word2, int usability, Placement placement) : base(shape, word1, word2, usability)
+        {
+            Placement = placement;
+        }
+
+        public BoardWordPair(WordPair wordPair, Placement placement) : this(wordPair.Shape, wordPair.Words[0], wordPair.Words[1], wordPair.Usability, placement) { }
+
+        public bool ContainsCell(int row, int col)
+        {
+            // assume that the cell you're analyzing is actually on the board
+            // if this BoardWordPair was ever made at all, that should always be true.
+            bool horizontalRowCheck = row == Placement.Row;
+            bool horizontalColCheck = col >= Placement.Col && col <= Shape.Length;
+            bool verticalRowCheck = row >= Placement.Row && row <= Shape.Length;
+            bool verticalColCheck = col == Placement.Col;
+            return (Placement.Dir == Orientation.Horizontal && horizontalColCheck && horizontalRowCheck) || (Placement.Dir == Orientation.Vertical && verticalColCheck && verticalRowCheck);
+        }
+
+        public int AtFull(int row, int col)
+        {
+            if (!ContainsCell(row, col)) return -1;
+            if (Placement.Dir == Orientation.Horizontal)
+            {
+                return col - Placement.Col;
+            }
+            return row - Placement.Row;
+        }
+
+        public int AtSingles(int row, int col)
+        {
+            int at = AtFull(row, col);
+            if (at < 0 || at == Shape.Index || at == Shape.Index + 1) return -1;
+            return at;
+        }
+
+        public int At(int row, int col, bool full = true)
+        {
+            return full ? AtFull(row, col) : AtSingles(row, col);
+        }
+
+        public int MistakeablesAt(int row, int col)
+        {
+            return Mistakeables[AtSingles(row, col)];
+        }
+    }
 }
