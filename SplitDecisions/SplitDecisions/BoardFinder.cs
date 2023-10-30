@@ -42,7 +42,7 @@
         Cell[][] Board;
         // map between WordPairs and their respective cells
         Dictionary<WordPair, List<List<int>>> WordPairToCellsLUT;
-        Dictionary<List<int>, List<WordPair>> CellsToWordPairsLUT;
+        Dictionary<List<int>, List<BoardWordPair>> CellsToWordPairsLUT;
 
         public BoardFinder(BoardSettings settings)
         {
@@ -79,7 +79,7 @@
             {
                 for (int j = 0; j < Height; j++)
                 {
-                    CellsToWordPairsLUT.Add(new List<int>() { i, j }, new List<WordPair>() { });
+                    CellsToWordPairsLUT.Add(new List<int>() { i, j }, new List<BoardWordPair>() { });
                 }
             }
         }
@@ -200,7 +200,7 @@
             WordPairToCellsLUT.Add(wordPair, cells);
             foreach (List<int> cell in cells)
             {
-                CellsToWordPairsLUT[cell].Add(wordPair);
+                CellsToWordPairsLUT[cell].Add(new BoardWordPair(wordPair, placement));
             }
             // narrow down the anchor conditions based on the current intersections
             List<List<bool>> simplifiedAnchors = GetSimplifiedAnchors(wordPair, currentIntersections);
@@ -412,7 +412,7 @@
         /// <param name="wordPair">
         /// Word pair to be removed from board
         /// </param>
-        public void RemoveWordPair(Cell[][] board, WordPair wordPair)
+        public void RemoveWordPair(Cell[][] board, BoardWordPair wordPair)
         {
             // TODO Entropy??
             // Remove wordPair from LUTs
