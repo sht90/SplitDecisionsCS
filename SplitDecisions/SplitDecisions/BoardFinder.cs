@@ -30,8 +30,10 @@
         private int Height;
         private int Width;
 
-        List<WordPair> UsedWordPairs;
-        List<string> UsedWords;
+        private Dictionary<Shape, List<WordPair>> WordBank;
+
+        private Random RNG;
+        private Dictionary<int, List<Shape>> ShapesByLength;
 
         // list of lists, sorted by entropy value
         //   list of cells, in arbitrary order
@@ -44,7 +46,7 @@
         Dictionary<WordPair, List<List<int>>> WordPairToCellsLUT;
         Dictionary<List<int>, List<BoardWordPair>> CellsToWordPairsLUT;
 
-        public BoardFinder(BoardSettings settings)
+        public BoardFinder(BoardSettings settings, List<WordPair> wordPairs)
         {
             // Parse settings
             MinWordLength = settings.MinWordLength;
@@ -53,10 +55,6 @@
             Width = settings.BoardWidth;
             // Make initial board
             Board = Enumerable.Repeat(Enumerable.Repeat(new Cell(), Width).ToArray(), Height).ToArray();
-            // Make the lists for keeping track of which wordPairs/words/prompts we've used so far. We don't want any repeats.
-            // Normally you'd just remove these things from the list, but since the list of Wordpairs (10k-100k) is so huge compared to the list of used WordPairs on the board (10-100), it's probably computationally cheaper just to check whether a word has been used yet. I suppose I could test both approaches sooner or later.
-            UsedWordPairs = new() { };
-            UsedWords = new() { };
             OrderedEntropies = new()
             {
                 Entropy.Anchor,
@@ -82,6 +80,151 @@
                     CellsToWordPairsLUT.Add(new List<int>() { i, j }, new List<BoardWordPair>() { });
                 }
             }
+            // Bank of words to select from
+            RNG = new Random();
+            // All the shapes
+            ShapesByLength = new();
+            WordBank = new();
+            for (int length = MinWordLength; length <= MaxWordLength; length++)
+            {
+                ShapesByLength.Add(length, new List<Shape>());
+                for (int index = 0; index < length - 2; index++)
+                {
+                    Shape shape = new Shape(length, index);
+                    WordBank.Add(shape, new List<WordPair>());
+                    ShapesByLength[length].Add(shape);
+                }
+            }
+            // Make a wordBank as a Dictionary so you can look them up by Shape
+            foreach (WordPair wp in wordPairs)
+            {
+                WordBank[wp.Shape].Add(wp);
+            }
+        }
+
+        /// <summary>
+        /// It's annoying to get a WordPair with a distribution that feels normal. And as I test this program, I'm sure I'll notice some types of WordPairs occurring more than others, and I'll try to tweak the weightings that make a normal-feeling distribution of WordPairs. This function will conceal all the weirdness and weightings that go into randomly picking a WordPair that feels normal.
+        /// </summary>
+        /// <returns></returns>
+        public WordPair? GetRandomWordPairFromBank()
+        {
+            // Current strategy is:
+            // 1. pick a random length.
+            // 2. pick a random Shape of that length
+            // 3. pick a random WordPair of that Shape
+            int length = RNG.Next(MinWordLength, MaxWordLength + 1);
+            return GetRandomWordPairFromBankOfLength(length);
+            // If we just picked randomly from every WordPair, there are sooo many 3-letter WordPairs, they'd surely dominate the random selection
+            // If we just picked randomly from every Shape, there's only 2 3-letter-long Shapes, whereas there's 9 10-letter-long shapes. That's unfairly biased towards big words, which will be very noticeable to a solver.
+            // Currently this starts by picking randomly amongst the lengths, which is fine for a first attempt. I may want to try to add a bonus to 4, 5, 6, and 7-letter long WordPairs. Or maybe just add an artificial cap to how many 3 and 8+ WordPairs are allowed on the board. Hm. I actually like this idea. TODO: see if implementing weights/caps for WordPairs is useful/good.
+            // I also might want to look into:
+            // 1. pick a random length.
+            // 2. pick a random Shape of that length
+            // 3. pick a random Prompt of that Shape
+            // 4. pick a random WordPair of that Prompt
+        }
+
+        private WordPair? GetRandomWordPairFromBankOfLength(int length)
+        {
+            // See desc for GetRandomWordPairFromBank
+            int index = RNG.Next(0, length - 1);
+            return GetRandomWordPairFromBankOfShape(ShapesByLength[length][index]);
+        }
+
+        private WordPair? GetRandomWordPairFromBankOfShape(Shape shape)
+        {
+            // See desc for GetRandomWordPairFromBank
+            int count = WordBank[shape].Count;
+            int rn = RNG.Next(0, count);
+            // prevent repeats by looking in the WordPairs-->Cells LUT
+            WordPair wordPair;
+            for (int i = 0; i < count; i++)
+            {
+                wordPair = WordBank[shape][(i + rn) % count];
+                if (!WordPairToCellsLUT.ContainsKey(wordPair)) return wordPair;
+            }
+            return null;
+        }
+
+        public Cell[][]? Pick(Cell[][]? board)
+        {
+            if (board == null) return null;
+            while (IsIncomplete(board))
+            {
+                foreach (Entropy e in OrderedEntropies)
+                {
+                    // Pick from the lowest entropy level possible
+                    if (CellsQueue[e].Count == 0) continue;
+
+                    // Randomly select an item to be chosen from the "queue"
+                    int i = RNG.Next(0, CellsQueue[e].Count);
+                    List<int> cell = CellsQueue[e][i];
+
+                    // For each possible WordPair (actually it'd be annoying to determine which shapes are impossible from here, and they're already handled in IsValidPlacement, so... for each WordPair, regardless of whether it's possible or not)
+                    // But you also can't just loop forever... Let's say just try some number of different wordPairs, and if you still can't find something, then it's not possible at all.
+                    List<Placement>? placements = null;
+                    WordPair? wp = GetRandomWordPairFromBank();
+                    for (int c = 0; c < 20; c++) // no idea if this should be like 10 or like 200.
+                    {
+                        if (wp == null) continue;
+                        // For every placement...
+                        placements = ValidPlacements(board, wp, cell[0], cell[1]);
+                        // If it didn't work, reroll and try again
+                        if (placements == null)
+                        {
+                            wp = GetRandomWordPairFromBank();
+                            continue;
+                        }
+                        // if it did work, break
+                        break;
+                    }
+                    if (placements == null || wp == null) break;
+                    // If you made it this far, you actually have some valid placements you can work with.
+                    Placement? oppPlacement = null;
+                    WordPair? oppWp = null;
+                    foreach (Placement placement in placements)
+                    {
+                        if (board == null) return null;
+                        board = Add(board, wp, placement);
+                        int oppCellRow = Height - 1 - placement.Row;
+                        int oppCellCol = Width - 1 - placement.Col;
+                        oppPlacement = new Placement(oppCellRow, oppCellCol, placement.Dir);
+                        Shape oppShape = ShapesByLength[wp.Shape.Length][wp.Shape.Length - 2 - wp.Shape.Index];
+                        oppWp = GetRandomWordPairFromBankOfShape(oppShape);
+                        for (int c = 0; c < 20; c++)
+                        {
+                            if (oppWp == null) continue;
+                            if (!IsValidPlacement(board, oppWp, oppPlacement))
+                            {
+                                oppWp = GetRandomWordPairFromBank();
+                                continue;
+                            }
+                            // if it did work, break
+                            break;
+                        }
+                        if (oppPlacement == null || oppWp == null) continue;
+                        board = Add(board, oppWp, oppPlacement);
+                        // did this complete the board?
+                        if (!IsIncomplete(board)) return board;
+                        // if you've made it this far, this was at least a successful addition to the board. Keep going
+                        board = Pick(board);
+                        if (!IsIncomplete(board)) return board;
+                        // Oops. If you've made it this far, time to backtrack
+                        if (oppWp != null && oppPlacement != null) board = RemoveWordPair(board, oppWp);
+                        // TODO this feels like it should be inside the foreach(Placement in placements) loop... what's it doing out here?
+                        board = RemoveWordPair(board, wp);
+                    }
+                    CellsQueue[e].RemoveAt(i);
+                    // Okay, you've backtracked and you're ready to get out of the loop
+                    // except wait... did we just establish that an anchor couldn't be filled?
+                    if (e == Entropy.HalfAnchor) break; // TODO: set this to default and opposite halfanchor to anchor
+                    if (e == Entropy.Anchor) break; // TODO: also remove this. Hm. Backtracking out of linear order means that the entropy removal will need to be more complicated than just undoing a call stack or something. I'll need to trace over the whole board and rewrite everyone's entropy. Ugh lol.
+
+                    // Since we're picking from the lowest entropy level possible, break from this foreach loop as soon as you successfully complete one iteration.
+                    break;
+                }
+            }
+            return null;
         }
 
         public static void PrintBoard(Cell[][] board, bool Contents=true, bool Entropy=false, bool toConsole=true, string fileName="")
@@ -134,10 +277,42 @@
             return boardStr;
         }
 
-        // update entropy of cells that claim to be available. Are they really?
-        private void UpdateboardAvailability(Cell[][] board)
+        // Assess if board is incomplete
+        private bool IsIncomplete(Cell[][]? board)
         {
-            return;
+            // Obviously if it's null that's bad
+            if (board == null) return true;
+            // If anything has any entropy other than Default or Resolved, the board is incomplete
+            // (though update the board Availability first to make sure you're looking at the right entropy)
+            board = UpdateboardAvailability(board);
+            if (CellsQueue[Entropy.Anchor].Count > 0) return true;
+            if (CellsQueue[Entropy.HalfAnchor].Count > 0) return true;
+            if (CellsQueue[Entropy.Floater].Count > 0) return true;
+            if (CellsQueue[Entropy.Available].Count > 0) return true;
+            // If the board isn't the size that it's supposed to be yet, it's definitely incomplete
+            bool leftWallTouched = false, rightWallTouched = false, topWallTouched = false, downWallTouched = false, cellPopulated;
+            for (int i = 0; i < board.Length; i++)
+            {
+                for (int j = 0; j < board[i].Length; j++)
+                {
+                    if (i != 0 && i != board.Length - 1 && j != 0 && j != board[i].Length - 1) continue;
+                    cellPopulated = board[i][j].Contents.Length > 0;
+                    if (i == 0) leftWallTouched = leftWallTouched || cellPopulated;
+                    else if (i == board.Length - 1) rightWallTouched = rightWallTouched || cellPopulated;
+                    if (j == 0) topWallTouched = topWallTouched || cellPopulated;
+                    else if (j == board[i].Length - 1) downWallTouched = downWallTouched || cellPopulated;
+                }
+            }
+            if (!(leftWallTouched && rightWallTouched && topWallTouched && downWallTouched)) return true;
+            // I think those are the only checks I care about. Am I forgetting something? TODO: figure out whether I'm forgetting something here?
+            return false;
+        }
+
+        // update entropy of cells that claim to be available. Are they really?
+        private Cell[][] UpdateboardAvailability(Cell[][] board)
+        {
+            // You're also going to want to update CellsQueue when you do this
+            return board;
         }
 
         /// <summary>
@@ -151,7 +326,7 @@
         /// <param name="wordPair">
         /// Word pair to be added to the board
         /// </param>
-        public void Add(Cell[][] board, WordPair wordPair, Placement placement)
+        public Cell[][] Add(Cell[][] board, WordPair wordPair, Placement placement)
         {
             // We'll put this cells list in an LUT soon
             List<List<int>> cells = new();
@@ -354,6 +529,7 @@
                 }
             }
             // The Add method is "finished" here now, but I've set myself up for a hellish time when removing a wordPair, because I'd also need to undo all of its entropy changes (again, entropy reveals itself to be an inaccurate word choice here). I think a better implementation might be to have a stack of board instead of just a global array. I could also just pass it through the recursive functions instead of building my own "recursive stack." But also, I'm tired. Wait a sec... isn't that just what happens when you pass the board and board through to each function? TODO.
+            return board;
         }
 
         /// <summary>
@@ -412,7 +588,7 @@
         /// <param name="wordPair">
         /// Word pair to be removed from board
         /// </param>
-        public void RemoveWordPair(Cell[][] board, BoardWordPair wordPair)
+        public Cell[][] RemoveWordPair(Cell[][] board, BoardWordPair wordPair)
         {
             // TODO Entropy??
             // Remove wordPair from LUTs
@@ -428,6 +604,7 @@
             }
             // when you're done all the cells, remove the WordPair from the WordPair-->Cells LUT
             WordPairToCellsLUT.Remove(wordPair);
+            return board;
         }
 
         /// <summary>
