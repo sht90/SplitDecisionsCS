@@ -315,6 +315,11 @@
             return board;
         }
 
+        public Cell[][] Add(Cell[][] board, BoardWordPair wordPair)
+        {
+            return Add(board, wordPair, wordPair.Placement);
+        }
+
         /// <summary>
         /// Adds a new word pair to the board and manages all relevant metadata:
         /// * Adds a new cell to the board for each tile in the word pair
