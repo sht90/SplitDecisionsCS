@@ -208,11 +208,11 @@
                         if (!IsIncomplete(board)) return board;
                         // if you've made it this far, this was at least a successful addition to the board. Keep going
                         board = Pick(board);
-                        if (!IsIncomplete(board)) return board;
+                        if (board == null || !IsIncomplete(board)) return board;
                         // Oops. If you've made it this far, time to backtrack
-                        if (oppWp != null && oppPlacement != null) board = RemoveWordPair(board, oppWp);
+                        if (oppWp != null && oppPlacement != null) board = RemoveWordPair(board, new BoardWordPair(oppWp, placement));
                         // TODO this feels like it should be inside the foreach(Placement in placements) loop... what's it doing out here?
-                        board = RemoveWordPair(board, wp);
+                        board = RemoveWordPair(board, new BoardWordPair(wp, placement));
                     }
                     CellsQueue[e].RemoveAt(i);
                     // Okay, you've backtracked and you're ready to get out of the loop
