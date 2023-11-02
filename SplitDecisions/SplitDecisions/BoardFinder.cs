@@ -160,11 +160,12 @@
                     int i = RNG.Next(0, CellsQueue[e].Count);
                     List<int> cell = CellsQueue[e][i];
 
-                    // For each possible WordPair (actually it'd be annoying to determine which shapes are impossible from here, and they're already handled in IsValidPlacement, so... for each WordPair, regardless of whether it's possible or not)
-                    // But you also can't just loop forever... Let's say just try some number of different wordPairs, and if you still can't find something, then it's not possible at all.
+                    // For each possible BoardWordPair that goes through this cell...
                     List<Placement>? placements = null;
                     WordPair? wp = GetRandomWordPairFromBank();
-                    for (int c = 0; c < 20; c++) // no idea if this should be like 10 or like 200.
+                    // (But you also can't just loop forever... Let's say just try some number of different wordPairs, and if you still can't find something, then it's not possible at all.)
+                    int threshold = 20; // no idea if this should be like 10 or like 200.
+                    for (int c = 0; c < threshold; c++) 
                     {
                         if (wp == null) continue;
                         // For every placement...
@@ -178,20 +179,23 @@
                         // if it did work, break
                         break;
                     }
-                    if (placements == null || wp == null) break;
+                    if (placements == null || wp == null) continue;
                     // If you made it this far, you actually have some valid placements you can work with.
                     Placement? oppPlacement = null;
                     WordPair? oppWp = null;
                     foreach (Placement placement in placements)
                     {
                         if (board == null) return null;
+                        // tentatively add the new WordPair to the board
+                        Cell[][] original_board = board;
                         board = Add(board, wp, placement);
+                        // now see if you can add another WordPair in the opposite location with the opposite shape.
                         int oppCellRow = Height - 1 - placement.Row;
                         int oppCellCol = Width - 1 - placement.Col;
                         oppPlacement = new Placement(oppCellRow, oppCellCol, placement.Dir);
                         Shape oppShape = ShapesByLength[wp.Shape.Length][wp.Shape.Length - 2 - wp.Shape.Index];
                         oppWp = GetRandomWordPairFromBankOfShape(oppShape);
-                        for (int c = 0; c < 20; c++)
+                        for (int c = 0; c < threshold; c++)
                         {
                             if (oppWp == null) continue;
                             if (!IsValidPlacement(board, oppWp, oppPlacement))
@@ -202,29 +206,36 @@
                             // if it did work, break
                             break;
                         }
-                        if (oppPlacement == null || oppWp == null) continue;
+                        if (oppPlacement == null || oppWp == null)
+                        {
+                            // With this placement, we couldn't add both the WordPair and an opposite counterpart. So consider this unsuuccessful. Undo the Add that we did previously, and continue;
+                            _ = RemoveWordPair(board, new BoardWordPair(wp, placement));
+                            board = original_board;
+                            continue;
+                        }
+                        // If you made it this far, you can add both WordPairs. So finish doing that.
                         board = Add(board, oppWp, oppPlacement);
-                        // did this complete the board?
-                        if (!IsIncomplete(board)) return board;
-                        // if you've made it this far, this was at least a successful addition to the board. Keep going
+                        // And then keep going.
                         board = Pick(board);
-                        if (board == null || !IsIncomplete(board)) return board;
+                        if (board == null) return null;
+                        if (!IsIncomplete(board))
+                        {
+                            // congratulations! We found a solution!
+                            return board;
+                        }
                         // Oops. If you've made it this far, time to backtrack
-                        if (oppWp != null && oppPlacement != null) board = RemoveWordPair(board, new BoardWordPair(oppWp, placement));
-                        // TODO this feels like it should be inside the foreach(Placement in placements) loop... what's it doing out here?
-                        board = RemoveWordPair(board, new BoardWordPair(wp, placement));
+                        // TODO Note: I don't know if I can get away with board = original_board here or if I need a more comprehensive remove function. I feel like this should work though?
+                        _ = RemoveWordPair(board, new BoardWordPair(oppWp, placement));
+                        _ = RemoveWordPair(board, new BoardWordPair(wp, placement));
+                        board = original_board;
                     }
+                    // you've tried every placement and nothing worked. Pop from queue.
                     CellsQueue[e].RemoveAt(i);
-                    // Okay, you've backtracked and you're ready to get out of the loop
-                    // except wait... did we just establish that an anchor couldn't be filled?
-                    if (e == Entropy.HalfAnchor) break; // TODO: set this to default and opposite halfanchor to anchor
-                    if (e == Entropy.Anchor) break; // TODO: also remove this. Hm. Backtracking out of linear order means that the entropy removal will need to be more complicated than just undoing a call stack or something. I'll need to trace over the whole board and rewrite everyone's entropy. Ugh lol.
-
                     // Since we're picking from the lowest entropy level possible, break from this foreach loop as soon as you successfully complete one iteration.
                     break;
                 }
             }
-            return null;
+            return board;
         }
 
         public static void PrintBoard(Cell[][] board, bool Contents=true, bool Entropy=false, bool toConsole=true, string fileName="")
