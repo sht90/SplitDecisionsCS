@@ -1,4 +1,6 @@
-﻿namespace SplitDecisions
+﻿using System;
+
+namespace SplitDecisions
 {
 
     public enum Entropy
@@ -88,7 +90,7 @@
             for (int length = MinWordLength; length <= MaxWordLength; length++)
             {
                 ShapesByLength.Add(length, new List<Shape>());
-                for (int index = 0; index < length - 2; index++)
+                for (int index = 0; index <= length - 2; index++)
                 {
                     Shape shape = new Shape(length, index);
                     WordBank.Add(shape, new List<WordPair>());
@@ -144,6 +146,74 @@
                 if (!WordPairToCellsLUT.ContainsKey(wordPair)) return wordPair;
             }
             return null;
+        }
+
+        public Cell[][]? AddFirstWordPairs(Cell[][]? board)
+        {
+            if (board == null) return null;
+            // Basically, pick a random WordPair through a random cell, pick a WordPair that runs opposite to that one, and voila.
+            List<Placement>? placements = null;
+            WordPair? wp = GetRandomWordPairFromBank();
+            // (But you also can't just loop forever... Let's say just try some number of different wordPairs, and if you still can't find something, then it's not possible at all.)
+            int threshold = 20; // no idea if this should be like 10 or like 200.
+            for (int c = 0; c < threshold; c++)
+            {
+                if (wp == null) continue;
+                // For every placement...
+                placements = ValidPlacements(board, wp);
+                // If it didn't work, reroll and try again
+                if (placements == null)
+                {
+                    wp = GetRandomWordPairFromBank();
+                    continue;
+                }
+                // if it did work, break
+                break;
+            }
+            if (placements == null || wp == null) return board;
+            // If you made it this far, you actually have some valid placements you can work with. Prepare to find opposites.
+            Placement? oppPlacement = null;
+            WordPair? oppWp = null;
+            // Since these are the first WordPairs, we expect to have a lot of valid placements. We can't guarantee that they'll all work, but most of them will be guaranteed to work. So systematically traversing them won't look very random. Traverse randomly instead.
+            for (int i = 0; i < placements.Count; i++)
+            {
+                // random traversal
+                int placementIndex = RNG.Next(0, placements.Count);
+                Placement placement = placements[placementIndex];
+
+                // tentatively add the new WordPair to the board
+                Cell[][] original_board = board;
+                board = Add(board, wp, placement);
+                // now see if you can add another WordPair in the opposite location with the opposite shape.
+                int oppCellRow = Height - 1 - placement.Row;
+                int oppCellCol = Width - 1 - placement.Col;
+                oppPlacement = new Placement(oppCellRow, oppCellCol, placement.Dir);
+                Shape oppShape = ShapesByLength[wp.Shape.Length][wp.Shape.Length - 2 - wp.Shape.Index];
+                oppWp = GetRandomWordPairFromBankOfShape(oppShape);
+                for (int c = 0; c < threshold; c++)
+                {
+                    if (oppWp == null) continue;
+                    if (!IsValidPlacement(board, oppWp, oppPlacement))
+                    {
+                        oppWp = GetRandomWordPairFromBank();
+                        continue;
+                    }
+                    // if it did work, break
+                    break;
+                }
+                if (oppPlacement == null || oppWp == null)
+                {
+                    // With this placement, we couldn't add both the WordPair and an opposite counterpart. So consider this unsuuccessful. Undo the Add that we did previously, and continue;
+                    _ = RemoveWordPair(board, new BoardWordPair(wp, placement));
+                    board = original_board;
+                    placements.RemoveAt(placementIndex);
+                    continue;
+                }
+                // If you made it this far, you can add both WordPairs. So finish doing that.
+                board = Add(board, oppWp, oppPlacement);
+                break;
+            }
+            return board;
         }
 
         public Cell[][]? Pick(Cell[][]? board)
@@ -238,8 +308,13 @@
             return board;
         }
 
-        public static void PrintBoard(Cell[][] board, bool Contents=true, bool Entropy=false, bool toConsole=true, string fileName="")
+        public static void PrintBoard(Cell[][]? board, bool Contents=true, bool Entropy=false, bool toConsole=true, string fileName="")
         {
+            if (board == null)
+            {
+                Console.WriteLine("null");
+                return;
+            }
             string boardRep = "";
             for (int r = 0; r < board.Length; r++)
             {
@@ -269,14 +344,21 @@
 
         public string[][] Solve()
         {
-            Cell[][] board = Board;
+            Cell[][]? board = Board;
             // Add starting point
+            board = AddFirstWordPairs(board);
+            Console.WriteLine("\nBOARD");
+            PrintBoard(board);
+            Console.WriteLine("\nENTROPY");
+            PrintBoard(board, false, true);
             // Recursive function
+            board = Pick(board);
             return boardAsStringArray(board);
         }
 
-        private string[][] boardAsStringArray(Cell[][] board)
+        private string[][] boardAsStringArray(Cell[][]? board)
         {
+            if (board == null) return new string[][] { new string[] { "null" } };
             string[][] boardStr = Enumerable.Repeat(Enumerable.Repeat("", Width).ToArray(), Height).ToArray();
             for (int i = 0; i < board.Length; i++)
             {

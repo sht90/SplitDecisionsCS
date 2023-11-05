@@ -41,3 +41,8 @@ watch.Stop();
 Console.WriteLine("Wrote to file in " + watch.ElapsedMilliseconds.ToString() + " milliseconds.");
 
 // Make the board
+BoardFinder boardFinder = new(settings, boardWordPairs);
+watch.Start();
+boardFinder.Solve();
+watch.Stop();
+Console.WriteLine("Solved in " + watch.ElapsedMilliseconds.ToString() + " milliseconds.");
