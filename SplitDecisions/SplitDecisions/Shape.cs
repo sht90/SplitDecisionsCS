@@ -24,5 +24,17 @@
             if (compareByLength != 0) { return compareByLength; }
             return this.Index.CompareTo(other.Index);
         }
+
+        public override bool Equals(object? other)
+        {
+            Shape? o = other as Shape;
+            if (o == null) return false;
+            return this.CompareTo(o) == 0;
+        }
+
+        public override int GetHashCode()
+        {
+            return (int)((Length * 1.0 - 3.0) * (Length * 1.0 / 2.0)) + Index;
+        }
     }
 }
