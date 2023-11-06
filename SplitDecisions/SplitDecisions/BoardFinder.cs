@@ -13,18 +13,6 @@ namespace SplitDecisions
         Default  // default entropic state
     }
 
-    internal class Cell
-    {
-        public string Contents;
-        public Entropy Entropy;
-
-        public Cell(string contents = "", Entropy entropy = Entropy.Default)
-        {
-            Contents = contents;
-            Entropy = entropy;
-        }
-    }
-
     internal class BoardFinder
     {
         private int MinWordLength;
