@@ -29,12 +29,12 @@ namespace SplitDecisions
         //   list of cells, in arbitrary order
         //     list of ints: row, col
         List<Entropy> OrderedEntropies;
-        Dictionary<Entropy, List<List<int>>> CellsQueue;
+        Dictionary<Entropy, List<RowCol>> CellsQueue;
         // list of strings to indicate board cells
         Cell[][] Board;
         // map between WordPairs and their respective cells
-        Dictionary<WordPair, List<List<int>>> WordPairToCellsLUT;
-        Dictionary<List<int>, List<BoardWordPair>> CellsToWordPairsLUT;
+        Dictionary<WordPair, List<RowCol>> WordPairToCellsLUT;
+        Dictionary<RowCol, List<BoardWordPair>> CellsToWordPairsLUT;
 
         public BoardFinder(BoardSettings settings, List<WordPair> wordPairs)
         {
@@ -54,10 +54,10 @@ namespace SplitDecisions
             };
             CellsQueue = new ()
             {
-                { Entropy.Anchor, new List<List<int>>() },
-                { Entropy.HalfAnchor, new List<List<int>>() },
-                { Entropy.Floater, new List<List<int>>() },
-                { Entropy.Available, new List<List<int>>() }
+                { Entropy.Anchor, new List<RowCol>() },
+                { Entropy.HalfAnchor, new List<RowCol>() },
+                { Entropy.Floater, new List<RowCol>() },
+                { Entropy.Available, new List<RowCol>() }
                 // This is just the queue. A resolved cell is effectively off the queue, and a default cell effectively hasn't been put on the queue yet.
             };
             WordPairToCellsLUT = new() { };
@@ -67,7 +67,7 @@ namespace SplitDecisions
             {
                 for (int j = 0; j < Height; j++)
                 {
-                    CellsToWordPairsLUT.Add(new List<int>() { i, j }, new List<BoardWordPair>() { });
+                    CellsToWordPairsLUT.Add(new RowCol(i, j), new List<BoardWordPair>() { });
                 }
             }
             // Bank of words to select from
@@ -216,7 +216,7 @@ namespace SplitDecisions
 
                     // Randomly select an item to be chosen from the "queue"
                     int i = RNG.Next(0, CellsQueue[e].Count);
-                    List<int> cell = CellsQueue[e][i];
+                    RowCol cell = CellsQueue[e][i];
 
                     // For each possible BoardWordPair that goes through this cell...
                     List<Placement>? placements = null;
@@ -227,7 +227,7 @@ namespace SplitDecisions
                     {
                         if (wp == null) continue;
                         // For every placement...
-                        placements = ValidPlacements(board, wp, cell[0], cell[1]);
+                        placements = ValidPlacements(board, wp, cell.Row, cell.Col);
                         // If it didn't work, reroll and try again
                         if (placements == null)
                         {
@@ -415,7 +415,7 @@ namespace SplitDecisions
         public Cell[][] Add(Cell[][] board, WordPair wordPair, Placement placement)
         {
             // We'll put this cells list in an LUT soon
-            List<List<int>> cells = new();
+            List<RowCol> cells = new();
             // prepare to traverse new wordPair
             int row = placement.Row;
             int col = placement.Col;
@@ -427,7 +427,7 @@ namespace SplitDecisions
                 if (placement.Dir == Orientation.Horizontal) col = placement.Col + i;
                 else row = placement.Row + i;
                 // add cell index to cells list for LUT
-                cells.Add(new List<int>() { row, col });
+                cells.Add(new RowCol(row, col));
                 // a cell is an intersection if it existed before adding this new cell
                 currentIntersections.Add(board[row][col].Entropy == Entropy.Resolved);
                 // add new tile to the board
@@ -459,7 +459,7 @@ namespace SplitDecisions
             }
             // add cells list to LUT
             WordPairToCellsLUT.Add(wordPair, cells);
-            foreach (List<int> cell in cells)
+            foreach (RowCol cell in cells)
             {
                 CellsToWordPairsLUT[cell].Add(new BoardWordPair(wordPair, placement));
             }
@@ -678,12 +678,12 @@ namespace SplitDecisions
         {
             // TODO Entropy??
             // Remove wordPair from LUTs
-            foreach (List<int> cell in WordPairToCellsLUT[wordPair])
+            foreach (RowCol cell in WordPairToCellsLUT[wordPair])
             {
                 // Set the existing tiles to blank, unless that'd overwrite a cell that existed before the word (like via an intersection)
                 if (CellsToWordPairsLUT[cell].Count == 1)
                 {
-                    board[cell[0]][cell[1]].Contents = "";
+                    board[cell.Row][cell.Col].Contents = "";
                 }
                 // when you're done, remove the WordPair from the Cells-->WordPairs LUT
                 CellsToWordPairsLUT[cell].Remove(wordPair);
@@ -769,7 +769,7 @@ namespace SplitDecisions
                       || (placement.Dir == Orientation.Vertical && checkRow < Height && (board[checkRow + 1][checkCol].Entropy == Entropy.Anchor || board[checkRow + 1][checkCol].Entropy == Entropy.HalfAnchor)) || (placement.Dir == Orientation.Vertical && checkRow > 0 && (board[checkRow - 1][checkCol].Entropy == Entropy.Anchor || board[checkRow - 1][checkCol].Entropy == Entropy.HalfAnchor)))
                     {
                         // We know this is valid syntax. If it weren't, well, we would've hit problems way earlier
-                        BoardWordPair intersector = CellsToWordPairsLUT[new List<int>() { checkRow, checkCol }][0];
+                        BoardWordPair intersector = CellsToWordPairsLUT[new RowCol(checkRow, checkCol)][0];
                         // Now we need to see if there are any similarities between the mistakeables of the intersector and this cell.
                         // Any mistakeables invalidate any Anchors AND HalfAchors
                         if ((intersector.MistakeablesAt(checkRow, checkCol) | wordPair.Mistakeables[tile]) != 0) return false;
