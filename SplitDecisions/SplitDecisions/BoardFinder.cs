@@ -19,6 +19,7 @@ namespace SplitDecisions
         private int MaxWordLength;
         private int Height;
         private int Width;
+        private BoardSettings Settings;
 
         private Dictionary<Shape, List<WordPair>> WordBank;
 
@@ -39,6 +40,7 @@ namespace SplitDecisions
         public BoardFinder(BoardSettings settings, List<WordPair> wordPairs)
         {
             // Parse settings
+            Settings = settings;
             MinWordLength = settings.MinWordLength;
             MaxWordLength = settings.MaxWordLength;
             Height = settings.BoardHeight;
@@ -67,7 +69,7 @@ namespace SplitDecisions
             {
                 for (int j = 0; j < Height; j++)
                 {
-                    CellsToWordPairsLUT.Add(new RowCol(i, j), new List<BoardWordPair>() { });
+                    CellsToWordPairsLUT.Add(new RowCol(i, j, Settings), new List<BoardWordPair>() { });
                 }
             }
             // Bank of words to select from
@@ -427,7 +429,7 @@ namespace SplitDecisions
                 if (placement.Dir == Orientation.Horizontal) col = placement.Col + i;
                 else row = placement.Row + i;
                 // add cell index to cells list for LUT
-                cells.Add(new RowCol(row, col));
+                cells.Add(new RowCol(row, col, Settings));
                 // a cell is an intersection if it existed before adding this new cell
                 currentIntersections.Add(board[row][col].Entropy == Entropy.Resolved);
                 // add new tile to the board
@@ -769,7 +771,7 @@ namespace SplitDecisions
                       || (placement.Dir == Orientation.Vertical && checkRow < Height && (board[checkRow + 1][checkCol].Entropy == Entropy.Anchor || board[checkRow + 1][checkCol].Entropy == Entropy.HalfAnchor)) || (placement.Dir == Orientation.Vertical && checkRow > 0 && (board[checkRow - 1][checkCol].Entropy == Entropy.Anchor || board[checkRow - 1][checkCol].Entropy == Entropy.HalfAnchor)))
                     {
                         // We know this is valid syntax. If it weren't, well, we would've hit problems way earlier
-                        BoardWordPair intersector = CellsToWordPairsLUT[new RowCol(checkRow, checkCol)][0];
+                        BoardWordPair intersector = CellsToWordPairsLUT[new RowCol(checkRow, checkCol, Settings)][0];
                         // Now we need to see if there are any similarities between the mistakeables of the intersector and this cell.
                         // Any mistakeables invalidate any Anchors AND HalfAchors
                         if ((intersector.MistakeablesAt(checkRow, checkCol) | wordPair.Mistakeables[tile]) != 0) return false;
