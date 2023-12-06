@@ -18,6 +18,7 @@ string USABLE_DICTIONARY_PATH = "/Users/samtaylor/Documents/SplitDecTextFiles/Us
 string REFERENCE_DICTIONARY_PATH = "/Users/samtaylor/Documents/SplitDecTextFiles/ReferenceDictionary.txt";
 string CONSTRAINED_WORDPAIRS_LOG = "/Users/samtaylor/Documents/SplitDecTextFiles/ConstrainedWordPairs.txt";
 
+/*
 // Find all possible word pairs from the starting dictionaries
 watch.Start();
 WordPairsFinder wordPairsFinder = new(settings);
@@ -39,6 +40,10 @@ foreach (WordPair wordPair in boardWordPairs) { constrainedWordPairsLog += wordP
 File.WriteAllText(CONSTRAINED_WORDPAIRS_LOG, constrainedWordPairsLog);
 watch.Stop();
 Console.WriteLine("Wrote to file in " + watch.ElapsedMilliseconds.ToString() + " milliseconds.");
+
+// TODO: Load the file in here so you don't have to re-derive it every time. It takes like 15 seconds every time like lmao
+*/
+List<WordPair> boardWordPairs = WordPairParser.LoadFile(CONSTRAINED_WORDPAIRS_LOG);
 
 // Make the board
 BoardFinder boardFinder = new(settings, boardWordPairs);
