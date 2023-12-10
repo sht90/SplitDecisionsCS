@@ -18,6 +18,11 @@ namespace SplitDecisions
             Col = col;
             Dir = Orientation.Horizontal;
 		}
-	}
+
+        public override string ToString()
+        {
+            return Dir == Orientation.Horizontal ? String.Format("{0},{1} Across", Row, Col) : String.Format("{0},{1} Down  ", Row, Col);
+        }
+    }
 }
 
