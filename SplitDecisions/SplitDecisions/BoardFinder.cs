@@ -170,13 +170,16 @@ namespace SplitDecisions
                 // random traversal
                 int placementIndex = RNG.Next(0, placements.Count);
                 Placement placement = placements[placementIndex];
-
                 // tentatively add the new WordPair to the board
                 Cell[][] original_board = board;
                 board = Add(board, wp, placement);
                 // now see if you can add another WordPair in the opposite location with the opposite shape.
-                int oppCellRow = Height - 1 - placement.Row;
-                int oppCellCol = Width - 1 - placement.Col;
+                // Also, subtract by the length -- Placements use the start of the wordpair, whereas finding the
+                // opposite cell would find the *end* of the word
+                int oppCellRow = Height - placement.Row - 1;
+                int oppCellCol = Width - placement.Col - 1;
+                if (placement.Dir == Orientation.Horizontal) oppCellCol -= wp.Shape.Length;
+                else oppCellRow -= wp.Shape.Length;
                 oppPlacement = new Placement(oppCellRow, oppCellCol, placement.Dir);
                 Shape oppShape = ShapesByLength[wp.Shape.Length][wp.Shape.Length - 2 - wp.Shape.Index];
                 oppWp = GetRandomWordPairFromBankOfShape(oppShape);
@@ -252,6 +255,8 @@ namespace SplitDecisions
                         // now see if you can add another WordPair in the opposite location with the opposite shape.
                         int oppCellRow = Height - 1 - placement.Row;
                         int oppCellCol = Width - 1 - placement.Col;
+                        if (placement.Dir == Orientation.Horizontal) oppCellCol -= wp.Shape.Length;
+                        else oppCellRow -= wp.Shape.Length;
                         oppPlacement = new Placement(oppCellRow, oppCellCol, placement.Dir);
                         Shape oppShape = ShapesByLength[wp.Shape.Length][wp.Shape.Length - 2 - wp.Shape.Index];
                         oppWp = GetRandomWordPairFromBankOfShape(oppShape);
@@ -709,7 +714,7 @@ namespace SplitDecisions
                 return false;
             }
             // if the end of the word goes off the board, that's also invalid
-            if (placement.Dir == Orientation.Horizontal && placement.Col >= Width - wordPair.Shape.Length || placement.Dir == Orientation.Vertical && placement.Row >= Height - wordPair.Shape.Length)
+            if ((placement.Dir == Orientation.Horizontal && placement.Col >= Width - wordPair.Shape.Length) || (placement.Dir == Orientation.Vertical && placement.Row >= Height - wordPair.Shape.Length))
             {
                 return false;
             }
@@ -966,7 +971,7 @@ namespace SplitDecisions
                 {
                     for (int col = 0; col < Width; col++)
                     {
-                        if (row >= Height - wordPair.Shape.Length && col > Width - wordPair.Shape.Length)
+                        if (row >= Height - wordPair.Shape.Length && col >= Width - wordPair.Shape.Length)
                         {
                             broken = true;
                             break;
