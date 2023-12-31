@@ -444,14 +444,18 @@ namespace SplitDecisions
 
                 // Now that the cell itself is done, update the surrounding cells/entropy
                 // there must be an empty cell right before and right after the wordPair
+                // or instead of being empty, it could just be off the board.
                 if (i == 0)
                 {
                     int tmpRow = row;
                     int tmpCol = col;
                     if (placement.Dir == Orientation.Horizontal) tmpCol = col - 1;
                     else tmpRow = row - 1;
-                    board[tmpRow][tmpCol].Contents = "0";
-                    board[tmpRow][tmpCol].Entropy = Entropy.Resolved;
+                    if (tmpRow >= 0 && tmpCol >= 0)
+                    {
+                        board[tmpRow][tmpCol].Contents = "0";
+                        board[tmpRow][tmpCol].Entropy = Entropy.Resolved;
+                    }
 
                 }
                 else if (i == wordPair.Shape.Length - 1)
@@ -460,8 +464,11 @@ namespace SplitDecisions
                     int tmpCol = col;
                     if (placement.Dir == Orientation.Horizontal) tmpCol = col + 1;
                     else tmpRow = row + 1;
-                    board[tmpRow][tmpCol].Contents = "0";
-                    board[tmpRow][tmpCol].Entropy = Entropy.Resolved;
+                    if (tmpRow < Height && tmpCol < Width)
+                    {
+                        board[tmpRow][tmpCol].Contents = "0";
+                        board[tmpRow][tmpCol].Entropy = Entropy.Resolved;
+                    }
                 }
             }
             // add cells list to LUT
