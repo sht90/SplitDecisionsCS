@@ -40,6 +40,11 @@
         {
             return this.Row * this.Settings.BoardWidth + this.Col;
         }
+
+        public override string ToString()
+        {
+            return $"({Row}, {Col})";
+        }
     }
 }
 

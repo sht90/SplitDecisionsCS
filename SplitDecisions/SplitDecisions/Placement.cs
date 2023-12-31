@@ -23,6 +23,12 @@ namespace SplitDecisions
         {
             return Dir == Orientation.Horizontal ? String.Format("{0},{1} Across", Row, Col) : String.Format("{0},{1} Down  ", Row, Col);
         }
+
+        public RowCol LastLetterRowCol(int length, BoardSettings settings)
+        {
+            if (Dir == Orientation.Horizontal) return new RowCol(Row, Col + length, settings);
+            return new RowCol(Row + length, Col, settings);
+        }
     }
 }
 
