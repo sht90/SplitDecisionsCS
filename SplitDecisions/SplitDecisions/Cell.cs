@@ -10,6 +10,15 @@
             Contents = contents;
             Entropy = entropy;
         }
+
+        public override string ToString()
+        {
+            if (Contents.Equals(""))
+            {
+                return "0";
+            }
+            return Contents;
+        }
     }
 }
 

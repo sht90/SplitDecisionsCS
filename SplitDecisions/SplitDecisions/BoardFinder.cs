@@ -141,6 +141,8 @@ namespace SplitDecisions
         public Cell[][]? AddFirstWordPairs(Cell[][]? board)
         {
             if (board == null) return null;
+            Console.WriteLine("BEFORE ADD");
+            PrintBoard(board, true, true);
             // Basically, pick a random WordPair through a random cell, pick a WordPair that runs opposite to that one, and voila.
             List<Placement>? placements = null;
             WordPair? wp = GetRandomWordPairFromBank();
@@ -172,7 +174,9 @@ namespace SplitDecisions
                 Placement placement = placements[placementIndex];
                 // tentatively add the new WordPair to the board
                 Cell[][] original_board = board;
+                Console.WriteLine($"From AddFirstWordPairs, tentatively Adding {wp} to {placement}");
                 board = Add(board, wp, placement);
+                PrintBoard(board);
                 // now see if you can add another WordPair in the opposite location with the opposite shape.
                 // Also, subtract by the length -- Placements use the start of the wordpair, whereas finding the
                 // opposite cell would find the *end* of the word
@@ -203,7 +207,9 @@ namespace SplitDecisions
                     continue;
                 }
                 // If you made it this far, you can add both WordPairs. So finish doing that.
+                Console.WriteLine($"Just about done AddFirstWordPairs. Adding {oppWp} to {oppPlacement}");
                 board = Add(board, oppWp, oppPlacement);
+                PrintBoard(board);
                 break;
             }
             return board;
@@ -303,7 +309,7 @@ namespace SplitDecisions
             return board;
         }
 
-        public static void PrintBoard(Cell[][]? board, bool Contents=true, bool Entropy=false, bool toConsole=true, string fileName="")
+        public static void PrintBoard(Cell[][]? board, bool contents=true, bool entropy=false, bool toConsole=true, string fileName="")
         {
             if (board == null)
             {
@@ -317,14 +323,13 @@ namespace SplitDecisions
                 for (int c = 0; c < board[r].Length; c++)
                 {
                     if (c != 0) boardRep += " ";
-                    if (Contents)
+                    if (contents)
                     {
                         // default cells should be empty
-                        if (board[r][c].Contents == "") boardRep += "0";
-                        else boardRep += board[r][c].Contents;
+                        boardRep += board[r][c].ToString();
                     }
-                    if (Contents && Entropy) boardRep += "|";
-                    if (Entropy) boardRep += board[r][c].Entropy.ToString();
+                    if (contents && entropy) boardRep += "|";
+                    if (entropy) boardRep += board[r][c].Entropy.ToString();
                 }
             }
             if (toConsole)
@@ -433,6 +438,7 @@ namespace SplitDecisions
                 // get indexes of cells
                 if (placement.Dir == Orientation.Horizontal) col = placement.Col + i;
                 else row = placement.Row + i;
+                Console.WriteLine($"ADDING {wordPair} ONE LETTER AT A TIME. STARTING WITH {wordPair[i]} at {row}, {col}");
                 // add cell index to cells list for LUT
                 cells.Add(new RowCol(row, col, Settings));
                 // a cell is an intersection if it existed before adding this new cell
@@ -441,6 +447,7 @@ namespace SplitDecisions
                 board[row][col].Contents = wordPair[i];
                 // resolve cell's entropy
                 board[row][col].Entropy = Entropy.Resolved;
+                PrintBoard(board);
 
                 // Now that the cell itself is done, update the surrounding cells/entropy
                 // there must be an empty cell right before and right after the wordPair
@@ -471,7 +478,10 @@ namespace SplitDecisions
                     }
                 }
             }
+            Console.WriteLine("We JUST added things to the board. They should be here!");
+            PrintBoard(board, true, true);
             // add cells list to LUT
+            Console.WriteLine($"Adding {wordPair} to WordPairToCellsLUT");
             WordPairToCellsLUT.Add(wordPair, cells);
             foreach (RowCol cell in cells)
             {
@@ -973,15 +983,13 @@ namespace SplitDecisions
             {
                 // Any placement is valid as long as the word pair doesn't run off the board
                 // Traverse every cell
-                bool broken = false;
                 for (int row = 0; row < Height; row++)
                 {
                     for (int col = 0; col < Width; col++)
                     {
                         if (row >= Height - wordPair.Shape.Length && col >= Width - wordPair.Shape.Length)
                         {
-                            broken = true;
-                            break;
+                            return placements;
                         }
                         if (row < Height - wordPair.Shape.Length)
                         {
@@ -992,7 +1000,6 @@ namespace SplitDecisions
                             placements.Add(new Placement(row, col, Orientation.Horizontal));
                         }
                     }
-                    if (broken) break;
                 }
                 return placements;
             }
