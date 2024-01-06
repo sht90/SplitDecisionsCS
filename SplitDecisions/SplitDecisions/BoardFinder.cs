@@ -46,7 +46,18 @@ namespace SplitDecisions
             Height = settings.BoardHeight;
             Width = settings.BoardWidth;
             // Make initial board
-            Board = Enumerable.Repeat(Enumerable.Repeat(new Cell(), Width).ToArray(), Height).ToArray();
+            Board = new Cell[Height][];
+            for (int r = 0; r < Height; r++)
+            {
+                Board[r] = new Cell[Width];
+            }
+            for (int r = 0; r < Height; r++)
+            {
+                for (int c = 0; c < Width; c++)
+                {
+                    Board[r][c] = new Cell();
+                }
+            }
             OrderedEntropies = new()
             {
                 Entropy.Anchor,
