@@ -84,7 +84,7 @@ namespace SplitDecisions
                 }
             }
             // Bank of words to select from
-            RNG = new Random();
+            RNG = new Random(3); // using a seed for debugging
             // All the shapes
             ShapesByLength = new();
             WordBank = new();
@@ -193,8 +193,8 @@ namespace SplitDecisions
                 // opposite cell would find the *end* of the word
                 int oppCellRow = Height - placement.Row - 1;
                 int oppCellCol = Width - placement.Col - 1;
-                if (placement.Dir == Orientation.Horizontal) oppCellCol -= wp.Shape.Length;
-                else oppCellRow -= wp.Shape.Length;
+                if (placement.Dir == Orientation.Horizontal) oppCellCol = Width - (placement.Col + wp.Shape.Length);
+                else oppCellRow = Height - (placement.Row + wp.Shape.Length);
                 oppPlacement = new Placement(oppCellRow, oppCellCol, placement.Dir);
                 Shape oppShape = ShapesByLength[wp.Shape.Length][wp.Shape.Length - 2 - wp.Shape.Index];
                 oppWp = GetRandomWordPairFromBankOfShape(oppShape);
@@ -449,7 +449,6 @@ namespace SplitDecisions
                 // get indexes of cells
                 if (placement.Dir == Orientation.Horizontal) col = placement.Col + i;
                 else row = placement.Row + i;
-                Console.WriteLine($"ADDING {wordPair} ONE LETTER AT A TIME. STARTING WITH {wordPair[i]} at {row}, {col}");
                 // add cell index to cells list for LUT
                 cells.Add(new RowCol(row, col, Settings));
                 // a cell is an intersection if it existed before adding this new cell
@@ -458,7 +457,6 @@ namespace SplitDecisions
                 board[row][col].Contents = wordPair[i];
                 // resolve cell's entropy
                 board[row][col].Entropy = Entropy.Resolved;
-                PrintBoard(board);
 
                 // Now that the cell itself is done, update the surrounding cells/entropy
                 // there must be an empty cell right before and right after the wordPair
@@ -489,10 +487,8 @@ namespace SplitDecisions
                     }
                 }
             }
-            Console.WriteLine("We JUST added things to the board. They should be here!");
-            PrintBoard(board, true, true);
             // add cells list to LUT
-            Console.WriteLine($"Adding {wordPair} to WordPairToCellsLUT");
+            Console.WriteLine($"Adding {wordPair} to the board");
             WordPairToCellsLUT.Add(wordPair, cells);
             foreach (RowCol cell in cells)
             {
@@ -509,7 +505,7 @@ namespace SplitDecisions
             for (int i = 0; i < wordPair.Shape.Length; i++)
             {
                 // get indexes of cells
-                if (placement.Dir == Orientation.Horizontal)
+                if (placement.Dir == Orientation.Vertical)
                 {
                     row = placement.Row + i;
                     colUL1 = col - 1;
@@ -587,8 +583,8 @@ namespace SplitDecisions
                     if (counts[m] == simplifiedAnchors.Count - 1)
                     {
                         bool ulBad = (
-                            // cell furthest in the upper left direction needs to be on the board
-                            !(srowULUL1 >= 0 && scolULUL2 >= 0)
+                            // cell furthest in the upper left direction needs to be on the board. Use logical shortcircuiting.
+                            (srowULUL1 >= 0 || scolULUL2 >= 0)
                             // none of the split cells can be occupied, unless they're explicitly empty
                             || (board[srowULUL1][scolULUL1].Contents.Length > 0 && board[srowULUL1][scolULUL1].Contents[0] != '0')
                             || (board[srowULUL2][scolULUL2].Contents.Length > 0 && board[srowULUL2][scolULUL2].Contents[0] != '0')
@@ -600,8 +596,8 @@ namespace SplitDecisions
                         );
                         // do the same thing for down/right
                         bool drBad = (
-                            // cell furthest in the down right direction needs to be on the board
-                            !(srowDRDR2 < Height && scolDRDR2 < Width)
+                            // cell furthest in the down right direction needs to be on the board. Use logical shortcircuiting.
+                            (srowDRDR2 >= Height || scolDRDR2 >= Width)
                             // none of the split cells can be occupied, unless they're explicitly empty
                             || (board[srowDRUL1][scolDRUL1].Contents.Length > 0 && board[srowDRUL1][scolDRUL1].Contents[0] != '0')
                             || (board[srowDRUL2][scolDRUL2].Contents.Length > 0 && board[srowDRUL2][scolDRUL2].Contents[0] != '0')
@@ -748,12 +744,12 @@ namespace SplitDecisions
             }
             // So the word pair is at least on the board. Determine whether its interactions with any of the other existing cells on the board are also valid. Traverse the WordPair one cell at a time.
             List<bool> anchorCandidates = new();
+            int checkRow = placement.Row;
+            int checkCol = placement.Col;
             for (int tile = -1; tile < wordPair.Shape.Length + 1; tile++)
             {
-                int checkRow = placement.Row;
-                int checkCol = placement.Col;
-                if (placement.Dir == Orientation.Horizontal) checkRow += tile;
-                else checkCol += tile;
+                if (placement.Dir == Orientation.Horizontal) checkCol = placement.Col + tile;
+                else checkRow = placement.Row + tile;
 
                 // There needs to be room for you to place an empty cell before and after the wordPair. The spacing of an empty tile is the only way to discern where one wordPair ends and where another begins.
                 if (tile < 0 || tile == wordPair.Shape.Length)
