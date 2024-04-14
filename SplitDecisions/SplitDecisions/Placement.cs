@@ -11,11 +11,13 @@ namespace SplitDecisions
     {
         public int Row;
         public int Col;
+        public int Length;
         public Orientation Dir;
-        public Placement(int row, int col, Orientation horizontal)
+        public Placement(int row, int col, int length, Orientation horizontal)
         {
             Row = row;
             Col = col;
+            Length = length;
             Dir = horizontal;
         }
 
@@ -24,10 +26,17 @@ namespace SplitDecisions
             return Dir == Orientation.Horizontal ? string.Format("{0},{1} Across", Row, Col) : string.Format("{0},{1} Down  ", Row, Col);
         }
 
-        public RowCol LastLetterRowCol(int length, BoardSettings settings)
+        public RowCol LastLetterRowCol(BoardSettings settings)
         {
-            if (Dir == Orientation.Horizontal) return new RowCol(Row, Col + length, settings);
-            return new RowCol(Row + length, Col, settings);
+            if (Dir == Orientation.Horizontal) return new RowCol(Row, Col + Length, settings);
+            return new RowCol(Row + Length, Col, settings);
+        }
+
+        public bool Contains(RowCol rowCol)
+        {
+            if (Dir == Orientation.Horizontal)
+                return (this.Row == rowCol.Row && this.Col <= rowCol.Col && this.Col + Length > rowCol.Col);
+            return (this.Col == rowCol.Col && this.Row <= rowCol.Row && this.Row + Length > rowCol.Row);
         }
     }
 }
