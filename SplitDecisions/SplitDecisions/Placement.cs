@@ -38,6 +38,17 @@ namespace SplitDecisions
                 return (this.Row == rowCol.Row && this.Col <= rowCol.Col && this.Col + Length > rowCol.Col);
             return (this.Col == rowCol.Col && this.Row <= rowCol.Row && this.Row + Length > rowCol.Row);
         }
+
+        public int IndexOf(RowCol rowCol)
+        {
+            if (!Contains(rowCol)) return -1;
+            if (this.Dir == Orientation.Horizontal)
+            {
+                return rowCol.Col - this.Col;
+            }
+            // if (this.Dir == Orientation.Vertical)
+            return rowCol.Row - this.Row;
+        }
     }
 }
 
