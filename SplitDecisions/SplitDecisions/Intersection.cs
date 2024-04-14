@@ -9,6 +9,7 @@ namespace SplitDecisions
         public int IndexHorizontal;
         public int IndexVertical;
 		private bool isValid = false;
+		private bool isMistakeable = false;
 		public Intersection(BoardWordPair wp1, BoardWordPair wp2, BoardSettings settings)
 		{
 			// if the wordPairs intersect, this should be guaranteed
@@ -54,9 +55,23 @@ namespace SplitDecisions
 			isValid = true;
 		}
 
+		public void UpdateMistakeability()
+		{
+			// horizonal index and vertical index
+			int hi = BoardWordPairHorizontal.WordPair.ConvertToLettersIndex(IndexHorizontal);
+            int vi = BoardWordPairVertical.WordPair.ConvertToLettersIndex(IndexVertical);
+			// Because we store mistakeables as bit encodings of each letter, a bitwise & will leave behind the encodings for the letters that can be mistaken for each other. If there are no mistakeables, then the value will be 0.
+			isMistakeable = (BoardWordPairHorizontal.WordPair.Mistakeables[hi] & BoardWordPairVertical.WordPair.Mistakeables[vi]) == 0;
+		}
+
 		public bool IsValid()
 		{
 			return isValid;
+		}
+
+		public bool IsMistakeable()
+		{
+			return isMistakeable;
 		}
 	}
 }

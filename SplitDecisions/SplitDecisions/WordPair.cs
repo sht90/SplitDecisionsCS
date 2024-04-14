@@ -41,6 +41,13 @@
             return this.Letters[key - 2].ToString();
         }
 
+        public int ConvertToLettersIndex(int key)
+        {
+            if (key < this.Shape.Index) return key;
+            if (key == Shape.Index || key == Shape.Index + 1) return -1;
+            return key - 2;
+        }
+
         public override string ToString()
         {
             return String.Format("{0}({1}/{2}){3}", Before, Splits[0], Splits[1], After);
