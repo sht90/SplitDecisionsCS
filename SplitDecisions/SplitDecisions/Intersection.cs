@@ -61,7 +61,7 @@ namespace SplitDecisions
 			int hi = BoardWordPairHorizontal.WordPair.ConvertToLettersIndex(IndexHorizontal);
             int vi = BoardWordPairVertical.WordPair.ConvertToLettersIndex(IndexVertical);
 			// Because we store mistakeables as bit encodings of each letter, a bitwise & will leave behind the encodings for the letters that can be mistaken for each other. If there are no mistakeables, then the value will be 0.
-			isMistakeable = (BoardWordPairHorizontal.WordPair.Mistakeables[hi] & BoardWordPairVertical.WordPair.Mistakeables[vi]) == 0;
+			isMistakeable = (BoardWordPairHorizontal.WordPair.Mistakeables[hi] & BoardWordPairVertical.WordPair.Mistakeables[vi]) != 0;
 		}
 
 		public bool IsValid()
