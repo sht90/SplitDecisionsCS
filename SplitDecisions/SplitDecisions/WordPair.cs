@@ -10,7 +10,7 @@
         public string After;
         public int Usability;
         public List<int> Mistakeables;
-        public List<List<bool>> Anchors;
+        public List<int> Anchors;
 
         public WordPair(Shape shape, string word1, string word2, int usability)
         {
@@ -24,7 +24,7 @@
             this.After = word1[(shape.Index + 2)..];
             this.Letters = Before + After;
             this.Mistakeables = new List<int> { };
-            this.Anchors = new List<List<bool>> { };
+            this.Anchors = new List<int> { };
             this.Usability = usability;
         }
 
@@ -65,12 +65,12 @@
         public string ShowAnchors()
         {
             string anchorsString = "[ ";
-            foreach (List<bool> anchor in Anchors)
+            foreach (int anchor in Anchors)
             {
                 anchorsString += "[ ";
-                foreach (bool a in anchor)
+                for (int i = 0; i < Letters.Length; i++)
                 {
-                    anchorsString += a ? "1" : "0";
+                    anchorsString += (anchor & (1 << (Letters.Length - i - 1))) > 0 ? "1" : "0";
                 }
                 anchorsString += " ] ";
             }

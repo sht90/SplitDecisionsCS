@@ -50,12 +50,12 @@
                 }
                 // Get anchors. Each anchor is a set of indices where, if correctly filled in, guarantees that there is only one unique solution to a WordPair
                 // Initialize anchors
-                wordPairs[i].Anchors = new List<List<bool>>() { };
+                wordPairs[i].Anchors = new List<int>() { };
                 // Some WordPairs are inherently constrained by their prompt.
                 // Handle the easy edge case, then break.
                 if (promptStartIndex == promptEndIndex)
                 {
-                    wordPairs[i].Anchors.Add(Enumerable.Repeat(false, wordPair.Letters.Length).ToList());
+                    wordPairs[i].Anchors.Add(0);
                     retList.Add(wordPair);
                     continue;
                 }
@@ -91,9 +91,9 @@
                         if (constrainsAll)
                         {
                             // If you made it here, you found an index combination that constrians the wordPair. These will be a set of possible anchor points for putting this wordPair on the board.
-                            List<bool> indexComboBool = Enumerable.Repeat(false, wordPair.Letters.Length).ToList();
-                            foreach (int index in indexCombo) { indexComboBool[index] = true; }
-                            wordPairs[i].Anchors.Add(indexComboBool);
+                            int indexComboInt = 0;
+                            foreach (int index in indexCombo) { indexComboInt |= 1 << (wordPair.Letters.Length - 1 - index); }
+                            wordPairs[i].Anchors.Add(indexComboInt);
                         }
                         // keep going in this loop, in case there are other index combos tied for the same size
                     }
