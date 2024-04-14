@@ -1,6 +1,6 @@
 ﻿namespace SplitDecisions
 {
-    internal class WordPair : IComparable, IComparable<WordPair>
+    public class WordPair : IComparable, IComparable<WordPair>
     {
         public Shape Shape;
         public string[] Words;

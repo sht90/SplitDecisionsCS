@@ -1,6 +1,6 @@
 ﻿namespace SplitDecisions
 {
-    internal class Shape: IComparable, IComparable<Shape>
+    public class Shape: IComparable, IComparable<Shape>
     {
         public int Length;
         public int Index;
