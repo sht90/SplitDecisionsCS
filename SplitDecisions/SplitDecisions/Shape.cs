@@ -4,10 +4,15 @@
     {
         public int Length;
         public int Index;
+        public int Id;
         public Shape(int length, int index)
         {
             Length = length;
             Index = index;
+            // A Shape Id is a unique consecutive int for each shape.
+            // This felt very sum-of-first-n-natural-numbers, and
+            // once you start from there the derivation is pretty easy
+            Id = Length * (Length - 3) / 2 + Index;
         }
 
         public int CompareTo(object? other)
@@ -20,9 +25,12 @@
         public int CompareTo(Shape? other)
         {
             if (other == null) { return 1; }
-            int compareByLength = this.Length.CompareTo(other.Length);
-            if (compareByLength != 0) { return compareByLength; }
-            return this.Index.CompareTo(other.Index);
+            return this.Id.CompareTo(other.Id);
+        }
+
+        public override int GetHashCode()
+        {
+            return this.Id;
         }
     }
 }
