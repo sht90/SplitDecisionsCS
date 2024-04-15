@@ -6,6 +6,7 @@
         public string[] Words;
         public string[] Splits;
         public string Letters;
+        public int LettersBits;
         public string Before;
         public string After;
         public int Usability;
@@ -23,6 +24,11 @@
             this.Before = word1[..shape.Index];
             this.After = word1[(shape.Index + 2)..];
             this.Letters = Before + After;
+            this.LettersBits = 0;
+            foreach (char letter in Letters)
+            {
+                LettersBits |= LetterCode.Encode(letter);
+            }
             this.Mistakeables = new List<int> { };
             this.Anchors = new List<int> { };
             this.Usability = usability;
