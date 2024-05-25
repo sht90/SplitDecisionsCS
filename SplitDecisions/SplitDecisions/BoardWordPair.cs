@@ -5,13 +5,15 @@ namespace SplitDecisions
 	{
 		public Placement Placement;
 		public WordPair WordPair;
+		public bool BaseWordPair = false;
 		public int Intersections;
 		public List<bool> AllPossibleAnchors;
 
-		public BoardWordPair(Placement placement, WordPair wordPair)
+		public BoardWordPair(Placement placement, WordPair wordPair, bool baseWordPair)
 		{
 			Placement = placement;
 			WordPair = wordPair;
+			BaseWordPair = baseWordPair;
 			Intersections = 0;
 			AllPossibleAnchors = Enumerable.Repeat(false, wordPair.Letters.Length).ToList();
 			int allPossibleAnchorsInt = 0;
