@@ -22,7 +22,7 @@ namespace SplitDecisions
 			Intersections = new();
         }
 
-		public bool IsAnchored()
+		public bool IsConstrained()
         {
             // reset all intersections to 0. Let it represent anchor points here.
             foreach (Intersection x in Intersections)
